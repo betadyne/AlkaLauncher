@@ -1,0 +1,33 @@
+# Dependencies
+node_modules
+
+# Build outputs
+dist
+src-tauri/target
+src-tauri/gen/schemas
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment variables
+.env
+.env.*
+*.local
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Local/personal folders
+attachment
+
+# Tauri bundler tools (auto-downloaded)
+src-tauri/WixTools
+src-tauri/NSIS
