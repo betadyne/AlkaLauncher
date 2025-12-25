@@ -8,6 +8,7 @@ use std::time::Instant;
 use tauri::State;
 use uuid::Uuid;
 use redb::{Database, TableDefinition};
+use chrono::{Local, NaiveDate};
 
 // Cache table definitions
 const VN_CACHE: TableDefinition<&str, &[u8]> = TableDefinition::new("vn_cache");
@@ -24,6 +25,15 @@ pub struct GameMetadata {
     pub cover_url: Option<String>,
     pub play_time: u64,
     pub is_finished: bool,
+    #[serde(default)]
+    pub last_played: Option<String>, // ISO 8601 timestamp e.g. "2025-12-25T20:30:00+07:00"
+}
+
+// Daily playtime tracking for progress reports
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct DailyPlaytimeData {
+    // Map of game_id -> Map of date_string -> minutes played
+    pub games: HashMap<String, HashMap<String, u64>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -189,6 +199,20 @@ fn get_settings_path() -> PathBuf {
     get_data_dir().join("settings.json")
 }
 
+fn get_daily_playtime_path() -> PathBuf {
+    get_data_dir().join("daily_playtime.json")
+}
+
+// Get current local date as string (YYYY-MM-DD)
+fn get_today_date_string() -> String {
+    Local::now().format("%Y-%m-%d").to_string()
+}
+
+// Get current local timestamp as ISO 8601 string
+fn get_current_timestamp() -> String {
+    Local::now().to_rfc3339()
+}
+
 fn save_games(games: &[GameMetadata]) -> Result<(), String> {
     let path = get_data_path();
     let json = serde_json::to_string_pretty(games).map_err(|e| e.to_string())?;
@@ -223,6 +247,40 @@ fn load_settings() -> AppSettings {
     } else {
         AppSettings::default()
     }
+}
+
+fn load_daily_playtime() -> DailyPlaytimeData {
+    let path = get_daily_playtime_path();
+    if path.exists() {
+        fs::read_to_string(path)
+            .ok()
+            .and_then(|s| serde_json::from_str(&s).ok())
+            .unwrap_or_default()
+    } else {
+        DailyPlaytimeData::default()
+    }
+}
+
+fn save_daily_playtime(data: &DailyPlaytimeData) -> Result<(), String> {
+    let path = get_daily_playtime_path();
+    let json = serde_json::to_string_pretty(data).map_err(|e| e.to_string())?;
+    fs::write(path, json).map_err(|e| e.to_string())
+}
+
+// Record playtime for a game on a specific date
+fn record_daily_playtime(game_id: &str, minutes: u64) {
+    if minutes == 0 {
+        return;
+    }
+    
+    let date_str = get_today_date_string();
+    let mut data = load_daily_playtime();
+    
+    let game_data = data.games.entry(game_id.to_string()).or_insert_with(HashMap::new);
+    let current = game_data.entry(date_str).or_insert(0);
+    *current += minutes;
+    
+    let _ = save_daily_playtime(&data);
 }
 
 // VNDB API helper
@@ -293,6 +351,7 @@ fn add_local_game(path: String, state: State<AppState>) -> Result<GameMetadata, 
         cover_url: None,
         play_time: 0,
         is_finished: false,
+        last_played: None,
     };
 
     let mut games = state.games.lock().unwrap();
@@ -647,12 +706,18 @@ fn stop_tracking(state: State<AppState>) -> Result<u64, String> {
     if let Some(game) = running.take() {
         let elapsed = game.start_time.elapsed();
         let minutes = elapsed.as_secs() / 60;
+        let game_id = game.id.clone();
 
         let mut games = state.games.lock().unwrap();
-        if let Some(g) = games.iter_mut().find(|g| g.id == game.id) {
+        if let Some(g) = games.iter_mut().find(|g| g.id == game_id) {
             g.play_time += minutes;
+            g.last_played = Some(get_current_timestamp());
             save_games(&games)?;
         }
+        drop(games);
+        
+        // Record daily playtime for progress reports
+        record_daily_playtime(&game_id, minutes);
 
         return Ok(minutes);
     }
@@ -672,13 +737,17 @@ fn get_running_game(state: State<AppState>) -> Option<String> {
                 let minutes = elapsed.as_secs() / 60;
                 let game_id = game.id.clone();
                 
-                // Update playtime
+                // Update playtime and last_played
                 let mut games = state.games.lock().unwrap();
                 if let Some(g) = games.iter_mut().find(|g| g.id == game_id) {
                     g.play_time += minutes;
+                    g.last_played = Some(get_current_timestamp());
                     let _ = save_games(&games);
                 }
                 drop(games);
+                
+                // Record daily playtime for progress reports
+                record_daily_playtime(&game_id, minutes);
                 
                 // Clear running state
                 *running = None;
