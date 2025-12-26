@@ -9,6 +9,7 @@ export interface Game {
     play_time: number;
     is_finished: boolean;
     last_played: string | null;
+    is_hidden: boolean;
 }
 
 export interface VndbImage {

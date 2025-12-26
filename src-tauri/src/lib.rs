@@ -28,6 +28,8 @@ pub struct GameMetadata {
     pub is_finished: bool,
     #[serde(default)]
     pub last_played: Option<String>, // ISO 8601 timestamp e.g. "2025-12-25T20:30:00+07:00"
+    #[serde(default)]
+    pub is_hidden: bool,
 }
 
 // Daily playtime tracking for progress reports
@@ -357,6 +359,7 @@ fn add_local_game(path: String, state: State<AppState>) -> Result<GameMetadata, 
         play_time: 0,
         is_finished: false,
         last_played: None,
+        is_hidden: false,
     };
 
     let mut games = state.games.lock().unwrap();
@@ -380,6 +383,16 @@ fn update_game(game: GameMetadata, state: State<AppState>) -> Result<(), String>
     let mut games = state.games.lock().unwrap();
     if let Some(existing) = games.iter_mut().find(|g| g.id == game.id) {
         *existing = game;
+    }
+    save_games(&games)
+}
+
+#[tauri::command]
+#[specta::specta]
+fn set_game_hidden(id: String, hidden: bool, state: State<AppState>) -> Result<(), String> {
+    let mut games = state.games.lock().unwrap();
+    if let Some(game) = games.iter_mut().find(|g| g.id == id) {
+        game.is_hidden = hidden;
     }
     save_games(&games)
 }
@@ -787,7 +800,7 @@ fn stop_tracking(state: State<AppState>) -> Result<u64, String> {
 
 #[tauri::command]
 #[specta::specta]
-fn get_running_game(state: State<AppState>) -> Option<String> {
+fn poll_running_game(state: State<AppState>) -> Option<String> {
     let mut running = state.running_game.lock().unwrap();
     
     if let Some(ref mut game) = *running {
@@ -896,8 +909,9 @@ pub fn run() {
             vndb_remove_vote,
             launch_game,
             stop_tracking,
-            get_running_game,
+            poll_running_game,
             get_elapsed_time,
+            set_game_hidden,
         ])
         .typ::<GameMetadata>()
         .typ::<DailyPlaytimeData>()

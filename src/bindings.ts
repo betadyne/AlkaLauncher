@@ -159,11 +159,19 @@ async stopTracking() : Promise<Result<number, string>> {
     else return { status: "error", error: e  as any };
 }
 },
-async getRunningGame() : Promise<string | null> {
-    return await TAURI_INVOKE("get_running_game");
+async pollRunningGame() : Promise<string | null> {
+    return await TAURI_INVOKE("poll_running_game");
 },
 async getElapsedTime() : Promise<number> {
     return await TAURI_INVOKE("get_elapsed_time");
+},
+async setGameHidden(id: string, hidden: boolean) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("set_game_hidden", { id, hidden }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -179,7 +187,7 @@ async getElapsedTime() : Promise<number> {
 
 export type AppSettings = { vndb_token: string | null; vndb_user_id: string | null; blur_nsfw: boolean }
 export type DailyPlaytimeData = { games: Partial<{ [key in string]: Partial<{ [key in string]: number }> }> }
-export type GameMetadata = { id: string; title: string; path: string; vndb_id: string | null; cover_url: string | null; play_time: number; is_finished: boolean; last_played?: string | null }
+export type GameMetadata = { id: string; title: string; path: string; vndb_id: string | null; cover_url: string | null; play_time: number; is_finished: boolean; last_played?: string | null; is_hidden?: boolean }
 export type VndbAuthInfo = { id: string; username: string }
 export type VndbCharacter = { id: string; name: string; original: string | null; aliases: string[] | null; image: VndbImage | null; description: string | null; blood_type: string | null; height: number | null; weight: number | null; bust: number | null; waist: number | null; hips: number | null; cup: string | null; age: number | null; birthday: number[] | null; sex: string[] | null; vns: VndbCharacterVn[] | null; traits: VndbTrait[] | null }
 export type VndbCharacterVn = { id: string; role: string; spoiler?: number }

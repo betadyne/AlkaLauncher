@@ -229,7 +229,7 @@ export function Detail(props: DetailProps) {
                                     </div>
 
                                     <div class="font-['Roboto'] text-lg leading-relaxed text-[#F1F5F9]/80 whitespace-pre-line max-w-3xl">
-                                        {props.vnDetail.description?.replace(/\[.*?\]/g, "")}
+                                        {props.vnDetail.description?.replace(/\[(url|spoiler|quote|raw|code)(?:=[^\]]*)?\]|\[\/(url|spoiler|quote|raw|code)\]/gi, "")}
                                     </div>
 
                                     <button onClick={() => window.open(`https://vndb.org/${props.game.vndb_id}`, "_blank")} class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#334155] to-[#1E293B] hover:from-[#475569] hover:to-[#334155] border border-slate-600/50 rounded-xl text-slate-200 hover:text-white font-medium transition-all shadow-lg hover:shadow-xl group">
@@ -367,7 +367,7 @@ export function Detail(props: DetailProps) {
                                                                         <Show when={char.description}>
                                                                             <tr>
                                                                                 <td class="text-slate-500 py-3 pr-6 align-top font-medium" colspan="2">
-                                                                                    <div class="text-slate-300 text-sm whitespace-pre-line leading-relaxed font-['Roboto'] bg-[#0F172A]/30 p-4 rounded-lg border border-white/5 mt-2">{char.description!.replace(/\[.*?\]/g, "")}</div>
+                                                                                    <div class="text-slate-300 text-sm whitespace-pre-line leading-relaxed font-['Roboto'] bg-[#0F172A]/30 p-4 rounded-lg border border-white/5 mt-2">{char.description!.replace(/\[(url|spoiler|quote|raw|code)(?:=[^\]]*)?\]|\[\/(url|spoiler|quote|raw|code)\]/gi, "")}</div>
                                                                                 </td>
                                                                             </tr>
                                                                         </Show>

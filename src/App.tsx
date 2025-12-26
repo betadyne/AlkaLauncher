@@ -4,6 +4,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { Search, X, User } from "lucide-solid";
 
 import type { Game, VndbSearchResult, VndbVnDetail, VndbCharacter, VndbUserListItem, AppSettings, VndbImage } from "./types";
+import { useLibraryFilters } from "./hooks/useLibraryFilters";
 
 import { Library } from "./views/Library";
 import { Detail } from "./views/Detail";
@@ -30,12 +31,15 @@ function App() {
   const [showSpoilers, setShowSpoilers] = createSignal(false);
   const [tokenInput, setTokenInput] = createSignal("");
 
+  // Library filters hook
+  const libraryFilters = useLibraryFilters(games);
+
   const loadGames = async () => {
-    const [games, running] = await Promise.all([
+    const [gamesData, running] = await Promise.all([
       invoke<Game[]>("get_all_games"),
-      invoke<string | null>("get_running_game")
+      invoke<string | null>("poll_running_game")
     ]);
-    setGames(games);
+    setGames(gamesData);
     setRunningGame(running);
   };
   const loadSettings = async () => {
@@ -56,6 +60,7 @@ function App() {
   const launchGame = async (id: string) => { await invoke("launch_game", { id }); setRunningGame(id); };
   const stopTracking = async () => { await invoke("stop_tracking"); setRunningGame(null); await loadGames(); };
   const removeGame = async (id: string) => { await invoke("remove_game", { id }); await loadGames(); };
+  const hideGame = async (id: string, hidden: boolean) => { await invoke("set_game_hidden", { id, hidden }); await loadGames(); };
   const searchVndb = async () => { if (!searchQuery().trim()) return; setSearching(true); setSearchResults(await invoke<VndbSearchResult[]>("search_vndb", { query: searchQuery() })); setSearching(false); };
   const linkVndb = async (vndb: VndbSearchResult) => { const g = searchModal(); if (!g) return; await invoke("update_game", { game: { ...g, title: vndb.title, vndb_id: vndb.id, cover_url: vndb.image?.url || null } }); await loadGames(); setSearchModal(null); setSearchResults([]); setSearchQuery(""); };
 
@@ -97,7 +102,7 @@ function App() {
   };
 
   let poll: number | undefined;
-  createEffect(() => { if (runningGame()) { poll = setInterval(async () => { const r = await invoke<string | null>("get_running_game"); if (r !== runningGame()) { setRunningGame(r); if (!r) await loadGames(); } }, 2000) as unknown as number; } else if (poll) { clearInterval(poll); poll = undefined; } });
+  createEffect(() => { if (runningGame()) { poll = setInterval(async () => { const r = await invoke<string | null>("poll_running_game"); if (r !== runningGame()) { setRunningGame(r); if (!r) await loadGames(); } }, 2000) as unknown as number; } else if (poll) { clearInterval(poll); poll = undefined; } });
   onCleanup(() => poll && clearInterval(poll));
 
   // Fast startup - init backend cache, then load data in parallel
@@ -110,8 +115,17 @@ function App() {
       <Show when={page() === "library"}>
         <Library
           games={games()}
+          filteredGames={libraryFilters.filteredGames()}
           runningGame={runningGame()}
           loading={loading()}
+          searchQuery={libraryFilters.searchQuery()}
+          onSearchChange={libraryFilters.setSearchQuery}
+          sortBy={libraryFilters.sortBy()}
+          onSortByChange={libraryFilters.setSortBy}
+          sortOrder={libraryFilters.sortOrder()}
+          onSortOrderChange={libraryFilters.setSortOrder}
+          showHidden={libraryFilters.showHidden()}
+          onShowHiddenChange={libraryFilters.setShowHidden}
           formatPlayTime={formatPlayTime}
           onAddGame={addGame}
           onStopTracking={stopTracking}
@@ -119,6 +133,7 @@ function App() {
           onRemoveGame={removeGame}
           onSearchGame={(g) => { setSearchModal(g); setSearchQuery(g.title); }}
           onOpenDetail={openDetail}
+          onHideGame={hideGame}
           onSettings={() => setShowSettings(true)}
         />
       </Show>
