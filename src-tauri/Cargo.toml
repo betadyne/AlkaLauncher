@@ -30,3 +30,6 @@ dirs = "6"
 redb = "2"
 bincode = "1"
 chrono = { version = "0.4", features = ["serde"] }
+specta = { version = "=2.0.0-rc.22", features = ["derive"] }
+tauri-specta = { version = "=2.0.0-rc.21", features = ["derive", "typescript"] }
+specta-typescript = "=0.0.9"

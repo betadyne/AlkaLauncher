@@ -353,7 +353,7 @@ export function Detail(props: DetailProps) {
                                                                         </Show>
                                                                         <Show when={char.height || char.weight || (char.bust && char.waist && char.hips)}>
                                                                             <tr>
-                                                                                <td class="text-slate-500 py-1.5 pr-6 align-top font-medium">Body</td>
+                                                                                <td class="text-slate-500 py-1.5 pr-6 align-top font-medium">Measurements</td>
                                                                                 <td class="text-slate-200 py-1.5 flex gap-4">
                                                                                     <Show when={char.height}><span>H: {char.height}cm</span></Show>
                                                                                     <Show when={char.weight}><span>W: {char.weight}kg</span></Show>

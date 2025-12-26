@@ -17,7 +17,7 @@ const CHAR_CACHE: TableDefinition<&str, &[u8]> = TableDefinition::new("char_cach
 
 // === MODELS ===
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct GameMetadata {
     pub id: String,
     pub title: String,
@@ -31,13 +31,13 @@ pub struct GameMetadata {
 }
 
 // Daily playtime tracking for progress reports
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, specta::Type)]
 pub struct DailyPlaytimeData {
     // Map of game_id -> Map of date_string -> minutes played
     pub games: HashMap<String, HashMap<String, u64>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct VndbSearchResult {
     pub id: String,
     pub title: String,
@@ -46,7 +46,7 @@ pub struct VndbSearchResult {
     pub rating: Option<f64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct VndbImage {
     pub url: String,
     #[serde(default)]
@@ -55,13 +55,13 @@ pub struct VndbImage {
     pub violence: f64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct VndbResponse<T> {
     pub results: Vec<T>,
 }
 
 // Extended VN details
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct VndbVnDetail {
     pub id: String,
     pub title: String,
@@ -74,7 +74,7 @@ pub struct VndbVnDetail {
     pub tags: Option<Vec<VndbTag>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct VndbTag {
     pub id: String,
     pub name: String,
@@ -84,7 +84,7 @@ pub struct VndbTag {
 }
 
 // Character models
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct VndbCharacter {
     pub id: String,
     pub name: String,
@@ -106,7 +106,7 @@ pub struct VndbCharacter {
     pub traits: Option<Vec<VndbTrait>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct VndbTrait {
     pub id: String,
     pub name: String,
@@ -116,7 +116,7 @@ pub struct VndbTrait {
     pub spoiler: i32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct VndbCharacterVn {
     pub id: String,
     pub role: String,
@@ -125,7 +125,7 @@ pub struct VndbCharacterVn {
 }
 
 // User list models
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct VndbUserListItem {
     pub id: String,
     pub vote: Option<i32>,
@@ -134,21 +134,21 @@ pub struct VndbUserListItem {
     pub finished: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct VndbLabel {
     pub id: i32,
     pub label: String,
 }
 
 // Auth info response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct VndbAuthInfo {
     pub id: String,
     pub username: String,
 }
 
 // Settings
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, specta::Type)]
 pub struct AppSettings {
     pub vndb_token: Option<String>,
     pub vndb_user_id: Option<String>,
@@ -327,16 +327,19 @@ fn disk_cache_set<T: Serialize>(db: Option<&Database>, table: TableDefinition<&s
 // === TAURI COMMANDS ===
 
 #[tauri::command]
+#[specta::specta]
 fn init_app() {
     // Database is now initialized in run() and stored in AppState
 }
 
 #[tauri::command]
+#[specta::specta]
 fn get_all_games(state: State<AppState>) -> Vec<GameMetadata> {
     state.games.lock().unwrap().clone()
 }
 
 #[tauri::command]
+#[specta::specta]
 fn add_local_game(path: String, state: State<AppState>) -> Result<GameMetadata, String> {
     let path_buf = PathBuf::from(&path);
     let title = path_buf
@@ -364,6 +367,7 @@ fn add_local_game(path: String, state: State<AppState>) -> Result<GameMetadata, 
 }
 
 #[tauri::command]
+#[specta::specta]
 fn remove_game(id: String, state: State<AppState>) -> Result<(), String> {
     let mut games = state.games.lock().unwrap();
     games.retain(|g| g.id != id);
@@ -371,6 +375,7 @@ fn remove_game(id: String, state: State<AppState>) -> Result<(), String> {
 }
 
 #[tauri::command]
+#[specta::specta]
 fn update_game(game: GameMetadata, state: State<AppState>) -> Result<(), String> {
     let mut games = state.games.lock().unwrap();
     if let Some(existing) = games.iter_mut().find(|g| g.id == game.id) {
@@ -382,6 +387,7 @@ fn update_game(game: GameMetadata, state: State<AppState>) -> Result<(), String>
 // === VNDB COMMANDS ===
 
 #[tauri::command]
+#[specta::specta]
 async fn search_vndb(query: String, state: State<'_, AppState>) -> Result<Vec<VndbSearchResult>, String> {
     let body = serde_json::json!({
         "filters": ["search", "=", query],
@@ -402,6 +408,7 @@ async fn search_vndb(query: String, state: State<'_, AppState>) -> Result<Vec<Vn
 }
 
 #[tauri::command]
+#[specta::specta]
 async fn fetch_vndb_detail(vndb_id: String, force_refresh: Option<bool>, state: State<'_, AppState>) -> Result<VndbVnDetail, String> {
     let refresh = force_refresh.unwrap_or(false);
     
@@ -457,6 +464,7 @@ async fn fetch_vndb_detail(vndb_id: String, force_refresh: Option<bool>, state: 
 }
 
 #[tauri::command]
+#[specta::specta]
 async fn fetch_vndb_characters(vndb_id: String, force_refresh: Option<bool>, state: State<'_, AppState>) -> Result<Vec<VndbCharacter>, String> {
     let refresh = force_refresh.unwrap_or(false);
     
@@ -511,6 +519,7 @@ async fn fetch_vndb_characters(vndb_id: String, force_refresh: Option<bool>, sta
 }
 
 #[tauri::command]
+#[specta::specta]
 fn clear_vndb_cache(vndb_id: String, state: State<AppState>) -> Result<(), String> {
     // Clear memory cache
     state.vn_mem_cache.lock().unwrap().remove(&vndb_id);
@@ -528,6 +537,7 @@ fn clear_vndb_cache(vndb_id: String, state: State<AppState>) -> Result<(), Strin
 }
 
 #[tauri::command]
+#[specta::specta]
 fn clear_all_cache(state: State<AppState>) -> Result<(), String> {
     // Clear memory cache
     state.vn_mem_cache.lock().unwrap().clear();
@@ -544,11 +554,13 @@ fn clear_all_cache(state: State<AppState>) -> Result<(), String> {
 // === VNDB AUTH & USER LIST ===
 
 #[tauri::command]
+#[specta::specta]
 fn get_settings(state: State<AppState>) -> AppSettings {
     state.settings.lock().unwrap().clone()
 }
 
 #[tauri::command]
+#[specta::specta]
 fn save_vndb_token(token: String, state: State<AppState>) -> Result<(), String> {
     let mut settings = state.settings.lock().unwrap();
     settings.vndb_token = Some(token);
@@ -556,6 +568,7 @@ fn save_vndb_token(token: String, state: State<AppState>) -> Result<(), String> 
 }
 
 #[tauri::command]
+#[specta::specta]
 fn clear_vndb_token(state: State<AppState>) -> Result<(), String> {
     let mut settings = state.settings.lock().unwrap();
     settings.vndb_token = None;
@@ -564,6 +577,7 @@ fn clear_vndb_token(state: State<AppState>) -> Result<(), String> {
 }
 
 #[tauri::command]
+#[specta::specta]
 fn set_blur_nsfw(blur: bool, state: State<AppState>) -> Result<(), String> {
     let mut settings = state.settings.lock().unwrap();
     settings.blur_nsfw = blur;
@@ -571,6 +585,7 @@ fn set_blur_nsfw(blur: bool, state: State<AppState>) -> Result<(), String> {
 }
 
 #[tauri::command]
+#[specta::specta]
 async fn vndb_auth_check(state: State<'_, AppState>) -> Result<VndbAuthInfo, String> {
     let token = {
         let settings = state.settings.lock().unwrap();
@@ -599,6 +614,7 @@ async fn vndb_auth_check(state: State<'_, AppState>) -> Result<VndbAuthInfo, Str
 }
 
 #[tauri::command]
+#[specta::specta]
 async fn vndb_get_user_vn(vndb_id: String, state: State<'_, AppState>) -> Result<Option<VndbUserListItem>, String> {
     let settings = state.settings.lock().unwrap().clone();
     let token = settings.vndb_token.ok_or("No VNDB token")?;
@@ -625,6 +641,7 @@ async fn vndb_get_user_vn(vndb_id: String, state: State<'_, AppState>) -> Result
 }
 
 #[tauri::command]
+#[specta::specta]
 async fn vndb_set_status(vndb_id: String, label_id: i32, state: State<'_, AppState>) -> Result<(), String> {
     let settings = state.settings.lock().unwrap().clone();
     let token = settings.vndb_token.ok_or("No VNDB token")?;
@@ -653,6 +670,7 @@ async fn vndb_set_status(vndb_id: String, label_id: i32, state: State<'_, AppSta
 }
 
 #[tauri::command]
+#[specta::specta]
 async fn vndb_set_vote(vndb_id: String, vote: i32, state: State<'_, AppState>) -> Result<(), String> {
     let settings = state.settings.lock().unwrap().clone();
     let token = settings.vndb_token.ok_or("No VNDB token")?;
@@ -677,6 +695,7 @@ async fn vndb_set_vote(vndb_id: String, vote: i32, state: State<'_, AppState>) -
 }
 
 #[tauri::command]
+#[specta::specta]
 async fn vndb_remove_vote(vndb_id: String, state: State<'_, AppState>) -> Result<(), String> {
     let settings = state.settings.lock().unwrap().clone();
     let token = settings.vndb_token.ok_or("No VNDB token")?;
@@ -699,6 +718,7 @@ async fn vndb_remove_vote(vndb_id: String, state: State<'_, AppState>) -> Result
 }
 
 #[tauri::command]
+#[specta::specta]
 fn launch_game(id: String, state: State<AppState>) -> Result<(), String> {
     let games = state.games.lock().unwrap();
     let game = games
@@ -741,6 +761,7 @@ fn launch_game(id: String, state: State<AppState>) -> Result<(), String> {
 }
 
 #[tauri::command]
+#[specta::specta]
 fn stop_tracking(state: State<AppState>) -> Result<u64, String> {
     let mut running = state.running_game.lock().unwrap();
     if let Some(game) = running.take() {
@@ -765,6 +786,7 @@ fn stop_tracking(state: State<AppState>) -> Result<u64, String> {
 }
 
 #[tauri::command]
+#[specta::specta]
 fn get_running_game(state: State<AppState>) -> Option<String> {
     let mut running = state.running_game.lock().unwrap();
     
@@ -809,6 +831,7 @@ fn get_running_game(state: State<AppState>) -> Option<String> {
 }
 
 #[tauri::command]
+#[specta::specta]
 fn get_elapsed_time(state: State<AppState>) -> u64 {
     let running = state.running_game.lock().unwrap();
     running
@@ -849,11 +872,9 @@ pub fn run() {
         db,
     };
 
-    tauri::Builder::default()
-        .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_fs::init())
-        .manage(state)
-        .invoke_handler(tauri::generate_handler![
+    // Build tauri-specta for type generation
+    let builder = tauri_specta::Builder::<tauri::Wry>::new()
+        .commands(tauri_specta::collect_commands![
             init_app,
             get_all_games,
             add_local_game,
@@ -878,7 +899,38 @@ pub fn run() {
             get_running_game,
             get_elapsed_time,
         ])
-        .setup(|app| {
+        .typ::<GameMetadata>()
+        .typ::<DailyPlaytimeData>()
+        .typ::<VndbSearchResult>()
+        .typ::<VndbImage>()
+        .typ::<VndbVnDetail>()
+        .typ::<VndbTag>()
+        .typ::<VndbCharacter>()
+        .typ::<VndbTrait>()
+        .typ::<VndbCharacterVn>()
+        .typ::<VndbUserListItem>()
+        .typ::<VndbLabel>()
+        .typ::<VndbAuthInfo>()
+        .typ::<AppSettings>();
+
+    // Export bindings in debug mode
+    #[cfg(debug_assertions)]
+    builder
+        .export(
+            specta_typescript::Typescript::default()
+                .bigint(specta_typescript::BigIntExportBehavior::Number)
+                .header("// Auto-generated by tauri-specta. Do not edit manually.\n"),
+            "../src/bindings.ts",
+        )
+        .expect("Failed to export TypeScript bindings");
+
+    tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
+        .invoke_handler(builder.invoke_handler())
+        .manage(state)
+        .setup(move |app| {
+            builder.mount_events(app);
             if cfg!(debug_assertions) {
                 app.handle().plugin(
                     tauri_plugin_log::Builder::default()
@@ -891,3 +943,4 @@ pub fn run() {
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
+
