@@ -8,7 +8,8 @@ use std::time::Instant;
 use tauri::State;
 use uuid::Uuid;
 use redb::{Database, TableDefinition};
-use chrono::{Local, NaiveDate};
+use chrono::Local;
+use tokio::task;
 
 // Cache table definitions
 const VN_CACHE: TableDefinition<&str, &[u8]> = TableDefinition::new("vn_cache");
@@ -163,6 +164,10 @@ pub struct AppState {
     // In-memory cache for instant access
     vn_mem_cache: Mutex<HashMap<String, VndbVnDetail>>,
     char_mem_cache: Mutex<HashMap<String, Vec<VndbCharacter>>>,
+    // Shared HTTP client for connection pooling
+    http_client: reqwest::Client,
+    // Persistence database
+    db: Option<Database>,
 }
 
 struct RunningGame {
@@ -172,14 +177,7 @@ struct RunningGame {
     process: Child,
 }
 
-// Lazy-initialized database connection
-fn get_cache_db_lazy() -> &'static Option<Database> {
-    static DB: std::sync::OnceLock<Option<Database>> = std::sync::OnceLock::new();
-    DB.get_or_init(|| {
-        let path = get_data_dir().join("vndb_cache.redb");
-        Database::create(path).ok()
-    })
-}
+// NO_REPLACE: Remove lazy initialization logic
 
 // === STORAGE ===
 
@@ -219,15 +217,28 @@ fn save_games(games: &[GameMetadata]) -> Result<(), String> {
     fs::write(path, json).map_err(|e| e.to_string())
 }
 
-fn load_games() -> Vec<GameMetadata> {
+fn load_games() -> Result<Vec<GameMetadata>, String> {
     let path = get_data_path();
-    if path.exists() {
-        fs::read_to_string(path)
-            .ok()
-            .and_then(|s| serde_json::from_str(&s).ok())
-            .unwrap_or_default()
-    } else {
-        Vec::new()
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+    
+    let content = fs::read_to_string(&path)
+        .map_err(|e| format!("Failed to read games.json: {}", e))?;
+    
+    match serde_json::from_str::<Vec<GameMetadata>>(&content) {
+        Ok(games) => Ok(games),
+        Err(e) => {
+            // Backup corrupted file before returning error
+            let timestamp = Local::now().format("%Y%m%d_%H%M%S");
+            let backup_path = get_data_dir().join(format!("games.json.corrupted.{}", timestamp));
+            if let Err(backup_err) = fs::copy(&path, &backup_path) {
+                eprintln!("Failed to backup corrupted games.json: {}", backup_err);
+            } else {
+                eprintln!("Corrupted games.json backed up to {:?}", backup_path);
+            }
+            Err(format!("games.json is corrupted (parse error: {}). A backup has been created.", e))
+        }
     }
 }
 
@@ -283,31 +294,25 @@ fn record_daily_playtime(game_id: &str, minutes: u64) {
     let _ = save_daily_playtime(&data);
 }
 
-// VNDB API helper
-fn vndb_client(token: Option<&str>) -> reqwest::Client {
-    let mut headers = reqwest::header::HeaderMap::new();
-    headers.insert("Content-Type", "application/json".parse().unwrap());
-    if let Some(t) = token {
-        headers.insert("Authorization", format!("Token {}", t).parse().unwrap());
-    }
+// VNDB API helper - creates the shared client once
+fn create_http_client() -> reqwest::Client {
     reqwest::Client::builder()
-        .default_headers(headers)
         .build()
         .unwrap()
 }
 
 // === CACHE (Disk) ===
 
-fn disk_cache_get<T: for<'de> Deserialize<'de>>(table: TableDefinition<&str, &[u8]>, key: &str) -> Option<T> {
-    let db = get_cache_db_lazy().as_ref()?;
+fn disk_cache_get<T: for<'de> Deserialize<'de>>(db: Option<&Database>, table: TableDefinition<&str, &[u8]>, key: &str) -> Option<T> {
+    let db = db?;
     let read_txn = db.begin_read().ok()?;
     let table = read_txn.open_table(table).ok()?;
     let value = table.get(key).ok()??;
     bincode::deserialize(value.value()).ok()
 }
 
-fn disk_cache_set<T: Serialize>(table: TableDefinition<&str, &[u8]>, key: &str, value: &T) {
-    if let Some(db) = get_cache_db_lazy().as_ref() {
+fn disk_cache_set<T: Serialize>(db: Option<&Database>, table: TableDefinition<&str, &[u8]>, key: &str, value: &T) {
+    if let Some(db) = db {
         if let Ok(write_txn) = db.begin_write() {
             if let Ok(mut t) = write_txn.open_table(table) {
                 if let Ok(data) = bincode::serialize(value) {
@@ -323,10 +328,7 @@ fn disk_cache_set<T: Serialize>(table: TableDefinition<&str, &[u8]>, key: &str, 
 
 #[tauri::command]
 fn init_app() {
-    // Pre-initialize cache database in background
-    std::thread::spawn(|| {
-        let _ = get_cache_db_lazy();
-    });
+    // Database is now initialized in run() and stored in AppState
 }
 
 #[tauri::command]
@@ -380,16 +382,16 @@ fn update_game(game: GameMetadata, state: State<AppState>) -> Result<(), String>
 // === VNDB COMMANDS ===
 
 #[tauri::command]
-async fn search_vndb(query: String) -> Result<Vec<VndbSearchResult>, String> {
-    let client = vndb_client(None);
+async fn search_vndb(query: String, state: State<'_, AppState>) -> Result<Vec<VndbSearchResult>, String> {
     let body = serde_json::json!({
         "filters": ["search", "=", query],
         "fields": "id, title, image.url, released, rating",
         "results": 10
     });
 
-    let response = client
+    let response = state.http_client
         .post("https://api.vndb.org/kana/vn")
+        .header("Content-Type", "application/json")
         .json(&body)
         .send()
         .await
@@ -410,9 +412,14 @@ async fn fetch_vndb_detail(vndb_id: String, force_refresh: Option<bool>, state: 
         }
     }
     
-    // 2. Check disk cache
+    // 2. Check disk cache (blocking I/O wrapped in block_in_place)
     if !refresh {
-        if let Some(cached) = disk_cache_get::<VndbVnDetail>(VN_CACHE, &vndb_id) {
+        let db_ref = state.db.as_ref();
+        let vndb_id_clone = vndb_id.clone();
+        let cached = task::block_in_place(|| {
+            disk_cache_get::<VndbVnDetail>(db_ref, VN_CACHE, &vndb_id_clone)
+        });
+        if let Some(cached) = cached {
             // Store in memory for next access
             state.vn_mem_cache.lock().unwrap().insert(vndb_id.clone(), cached.clone());
             return Ok(cached);
@@ -420,15 +427,15 @@ async fn fetch_vndb_detail(vndb_id: String, force_refresh: Option<bool>, state: 
     }
 
     // 3. Fetch from API
-    let client = vndb_client(None);
     let body = serde_json::json!({
         "filters": ["id", "=", vndb_id],
         "fields": "id, title, image.url, image.sexual, image.violence, released, rating, description, length, length_minutes, tags.id, tags.name, tags.rating, tags.spoiler",
         "results": 1
     });
 
-    let response = client
+    let response = state.http_client
         .post("https://api.vndb.org/kana/vn")
+        .header("Content-Type", "application/json")
         .json(&body)
         .send()
         .await
@@ -439,7 +446,12 @@ async fn fetch_vndb_detail(vndb_id: String, force_refresh: Option<bool>, state: 
 
     // Store in both memory and disk cache
     state.vn_mem_cache.lock().unwrap().insert(vndb_id.clone(), detail.clone());
-    disk_cache_set(VN_CACHE, &vndb_id, &detail);
+    let db_ref = state.db.as_ref();
+    let vndb_id_clone = vndb_id.clone();
+    let detail_clone = detail.clone();
+    task::block_in_place(|| {
+        disk_cache_set(db_ref, VN_CACHE, &vndb_id_clone, &detail_clone);
+    });
 
     Ok(detail)
 }
@@ -455,24 +467,29 @@ async fn fetch_vndb_characters(vndb_id: String, force_refresh: Option<bool>, sta
         }
     }
     
-    // 2. Check disk cache
+    // 2. Check disk cache (blocking I/O wrapped in block_in_place)
     if !refresh {
-        if let Some(cached) = disk_cache_get::<Vec<VndbCharacter>>(CHAR_CACHE, &vndb_id) {
+        let db_ref = state.db.as_ref();
+        let vndb_id_clone = vndb_id.clone();
+        let cached = task::block_in_place(|| {
+            disk_cache_get::<Vec<VndbCharacter>>(db_ref, CHAR_CACHE, &vndb_id_clone)
+        });
+        if let Some(cached) = cached {
             state.char_mem_cache.lock().unwrap().insert(vndb_id.clone(), cached.clone());
             return Ok(cached);
         }
     }
 
     // 3. Fetch from API
-    let client = vndb_client(None);
     let body = serde_json::json!({
         "filters": ["vn", "=", ["id", "=", vndb_id]],
         "fields": "id, name, original, aliases, image.url, image.sexual, image.violence, description, blood_type, height, weight, bust, waist, hips, cup, age, birthday, sex, vns.id, vns.role, vns.spoiler, traits.id, traits.name, traits.group_id, traits.group_name, traits.spoiler",
         "results": 50
     });
 
-    let response = client
+    let response = state.http_client
         .post("https://api.vndb.org/kana/character")
+        .header("Content-Type", "application/json")
         .json(&body)
         .send()
         .await
@@ -483,7 +500,12 @@ async fn fetch_vndb_characters(vndb_id: String, force_refresh: Option<bool>, sta
 
     // Store in both memory and disk cache
     state.char_mem_cache.lock().unwrap().insert(vndb_id.clone(), chars.clone());
-    disk_cache_set(CHAR_CACHE, &vndb_id, &chars);
+    let db_ref = state.db.as_ref();
+    let vndb_id_clone = vndb_id.clone();
+    let chars_clone = chars.clone();
+    task::block_in_place(|| {
+        disk_cache_set(db_ref, CHAR_CACHE, &vndb_id_clone, &chars_clone);
+    });
 
     Ok(chars)
 }
@@ -495,7 +517,7 @@ fn clear_vndb_cache(vndb_id: String, state: State<AppState>) -> Result<(), Strin
     state.char_mem_cache.lock().unwrap().remove(&vndb_id);
     
     // Clear disk cache
-    if let Some(db) = get_cache_db_lazy().as_ref() {
+    if let Some(db) = state.db.as_ref() {
         if let Ok(write_txn) = db.begin_write() {
             if let Ok(mut t) = write_txn.open_table(VN_CACHE) { let _ = t.remove(vndb_id.as_str()); }
             if let Ok(mut t) = write_txn.open_table(CHAR_CACHE) { let _ = t.remove(vndb_id.as_str()); }
@@ -555,9 +577,9 @@ async fn vndb_auth_check(state: State<'_, AppState>) -> Result<VndbAuthInfo, Str
         settings.vndb_token.clone().ok_or("No VNDB token configured")?
     };
     
-    let client = vndb_client(Some(&token));
-    let response = client
+    let response = state.http_client
         .get("https://api.vndb.org/kana/authinfo")
+        .header("Authorization", format!("Token {}", token))
         .send()
         .await
         .map_err(|e| e.to_string())?;
@@ -582,7 +604,6 @@ async fn vndb_get_user_vn(vndb_id: String, state: State<'_, AppState>) -> Result
     let token = settings.vndb_token.ok_or("No VNDB token")?;
     let user_id = settings.vndb_user_id.ok_or("Not authenticated")?;
     
-    let client = vndb_client(Some(&token));
     let body = serde_json::json!({
         "user": user_id,
         "filters": ["id", "=", vndb_id],
@@ -590,8 +611,10 @@ async fn vndb_get_user_vn(vndb_id: String, state: State<'_, AppState>) -> Result
         "results": 1
     });
 
-    let response = client
+    let response = state.http_client
         .post("https://api.vndb.org/kana/ulist")
+        .header("Content-Type", "application/json")
+        .header("Authorization", format!("Token {}", token))
         .json(&body)
         .send()
         .await
@@ -606,7 +629,6 @@ async fn vndb_set_status(vndb_id: String, label_id: i32, state: State<'_, AppSta
     let settings = state.settings.lock().unwrap().clone();
     let token = settings.vndb_token.ok_or("No VNDB token")?;
     
-    let client = vndb_client(Some(&token));
     // Labels: 1=Playing, 2=Finished, 3=Stalled, 4=Dropped, 5=Wishlist
     let labels_unset: Vec<i32> = [1, 2, 3, 4, 5].into_iter().filter(|&x| x != label_id).collect();
     let body = serde_json::json!({
@@ -614,8 +636,10 @@ async fn vndb_set_status(vndb_id: String, label_id: i32, state: State<'_, AppSta
         "labels_unset": labels_unset
     });
 
-    let response = client
+    let response = state.http_client
         .patch(format!("https://api.vndb.org/kana/ulist/{}", vndb_id))
+        .header("Content-Type", "application/json")
+        .header("Authorization", format!("Token {}", token))
         .json(&body)
         .send()
         .await
@@ -633,12 +657,13 @@ async fn vndb_set_vote(vndb_id: String, vote: i32, state: State<'_, AppState>) -
     let settings = state.settings.lock().unwrap().clone();
     let token = settings.vndb_token.ok_or("No VNDB token")?;
     
-    let client = vndb_client(Some(&token));
     // Vote is 10-100 (e.g., 75 = 7.5)
     let body = serde_json::json!({ "vote": vote });
 
-    let response = client
+    let response = state.http_client
         .patch(format!("https://api.vndb.org/kana/ulist/{}", vndb_id))
+        .header("Content-Type", "application/json")
+        .header("Authorization", format!("Token {}", token))
         .json(&body)
         .send()
         .await
@@ -656,11 +681,12 @@ async fn vndb_remove_vote(vndb_id: String, state: State<'_, AppState>) -> Result
     let settings = state.settings.lock().unwrap().clone();
     let token = settings.vndb_token.ok_or("No VNDB token")?;
     
-    let client = vndb_client(Some(&token));
     let body = serde_json::json!({ "vote": null });
 
-    let response = client
+    let response = state.http_client
         .patch(format!("https://api.vndb.org/kana/ulist/{}", vndb_id))
+        .header("Content-Type", "application/json")
+        .header("Authorization", format!("Token {}", token))
         .json(&body)
         .send()
         .await
@@ -681,14 +707,28 @@ fn launch_game(id: String, state: State<AppState>) -> Result<(), String> {
         .ok_or("Game not found")?;
 
     let path = PathBuf::from(&game.path);
+    
+    // Validate path exists and is a file
     if !path.exists() {
-        return Err("Game executable not found".to_string());
+        return Err(format!("Game executable not found: {}", path.display()));
+    }
+    if !path.is_file() {
+        return Err(format!("Path is not a file: {}", path.display()));
     }
 
+    // Spawn the process with detailed error handling
     let child = Command::new(&path)
         .current_dir(path.parent().unwrap_or(&path))
         .spawn()
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            use std::io::ErrorKind;
+            match e.kind() {
+                ErrorKind::NotFound => format!("Executable not found or invalid: {}", path.display()),
+                ErrorKind::PermissionDenied => format!("Permission denied: cannot execute {}", path.display()),
+                ErrorKind::InvalidInput => format!("Invalid executable path: {}", path.display()),
+                _ => format!("Failed to launch game: {} ({})", e, path.display()),
+            }
+        })?;
 
     let mut running = state.running_game.lock().unwrap();
     *running = Some(RunningGame {
@@ -781,12 +821,32 @@ fn get_elapsed_time(state: State<AppState>) -> u64 {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let db_path = get_data_dir().join("vndb_cache.redb");
+    let db = match Database::create(&db_path) {
+        Ok(db) => Some(db),
+        Err(e) => {
+            eprintln!("Failed to create cache database at {:?}: {}", db_path, e);
+            None
+        }
+    };
+
+    let games = match load_games() {
+        Ok(g) => g,
+        Err(e) => {
+            eprintln!("Error loading games: {}", e);
+            // Start with empty list but the error is logged and backup created
+            Vec::new()
+        }
+    };
+
     let state = AppState {
-        games: Mutex::new(load_games()),
+        games: Mutex::new(games),
         running_game: Mutex::new(None),
         settings: Mutex::new(load_settings()),
         vn_mem_cache: Mutex::new(HashMap::new()),
         char_mem_cache: Mutex::new(HashMap::new()),
+        http_client: create_http_client(),
+        db,
     };
 
     tauri::Builder::default()
