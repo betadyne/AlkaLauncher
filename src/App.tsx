@@ -8,6 +8,7 @@ import { useLibraryFilters } from "./hooks/useLibraryFilters";
 
 import { Library } from "./views/Library";
 import { Detail } from "./views/Detail";
+import { TitleBar } from "./components/TitleBar";
 
 function App() {
   const [games, setGames] = createSignal<Game[]>([]);
@@ -30,6 +31,7 @@ function App() {
   const [userVn, setUserVn] = createSignal<VndbUserListItem | null>(null);
   const [showSpoilers, setShowSpoilers] = createSignal(false);
   const [tokenInput, setTokenInput] = createSignal("");
+  const [isRefreshing, setIsRefreshing] = createSignal(false);
 
   // Library filters hook
   const libraryFilters = useLibraryFilters(games);
@@ -67,7 +69,6 @@ function App() {
   const openDetail = async (game: Game, forceRefresh = false) => {
     if (!game.vndb_id) return;
     setCurrentGame(game); setPage("detail"); setShowSpoilers(false);
-    if (forceRefresh) { setVnDetail(null); setCharacters([]); }
     const [d, c] = await Promise.all([
       invoke<VndbVnDetail>("fetch_vndb_detail", { vndbId: game.vndb_id, forceRefresh }),
       invoke<VndbCharacter[]>("fetch_vndb_characters", { vndbId: game.vndb_id, forceRefresh })
@@ -78,7 +79,13 @@ function App() {
 
   const refreshDetail = async () => {
     const g = currentGame();
-    if (g) await openDetail(g, true);
+    if (!g) return;
+    setIsRefreshing(true);
+    try {
+      await openDetail(g, true);
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const goBack = () => { setPage("library"); setCurrentGame(null); setVnDetail(null); setCharacters([]); setUserVn(null); };
@@ -110,58 +117,66 @@ function App() {
   Promise.all([loadGames(), loadSettings()]);
 
   return (
-    <div class="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      {/* Library View */}
-      <Show when={page() === "library"}>
-        <Library
-          games={games()}
-          filteredGames={libraryFilters.filteredGames()}
-          runningGame={runningGame()}
-          loading={loading()}
-          searchQuery={libraryFilters.searchQuery()}
-          onSearchChange={libraryFilters.setSearchQuery}
-          sortBy={libraryFilters.sortBy()}
-          onSortByChange={libraryFilters.setSortBy}
-          sortOrder={libraryFilters.sortOrder()}
-          onSortOrderChange={libraryFilters.setSortOrder}
-          showHidden={libraryFilters.showHidden()}
-          onShowHiddenChange={libraryFilters.setShowHidden}
-          formatPlayTime={formatPlayTime}
-          onAddGame={addGame}
-          onStopTracking={stopTracking}
-          onLaunchGame={launchGame}
-          onRemoveGame={removeGame}
-          onSearchGame={(g) => { setSearchModal(g); setSearchQuery(g.title); }}
-          onOpenDetail={openDetail}
-          onHideGame={hideGame}
-          onSettings={() => setShowSettings(true)}
-        />
-      </Show>
+    <div class="h-screen flex flex-col bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      {/* Custom Title Bar */}
+      <TitleBar />
 
-      {/* Detail View */}
-      <Show when={page().startsWith("detail") && vnDetail() && currentGame()}>
-        <Detail
-          page={page() as "detail" | "detail-chars"}
-          setPage={(p) => setPage(p)}
-          game={currentGame()!}
-          vnDetail={vnDetail()!}
-          characters={characters()}
-          userVn={userVn()}
-          runningGame={runningGame()}
-          settings={settings()}
-          showSpoilers={showSpoilers()}
-          setShowSpoilers={setShowSpoilers}
-          onBack={goBack}
-          onRefresh={refreshDetail}
-          onSettings={() => setShowSettings(true)}
-          onLaunchGame={launchGame}
-          onSetStatus={setStatus}
-          onSetVote={setVote}
-          formatPlayTime={formatPlayTime}
-          formatLastPlayed={formatLastPlayed}
-          shouldBlur={shouldBlur}
-        />
-      </Show>
+      {/* Main Content Area */}
+      <div class="flex-1 overflow-hidden relative">
+        {/* Library View */}
+        <Show when={page() === "library"}>
+          <Library
+            games={games()}
+            filteredGames={libraryFilters.filteredGames()}
+            runningGame={runningGame()}
+            loading={loading()}
+            authUser={authUser()}
+            searchQuery={libraryFilters.searchQuery()}
+            onSearchChange={libraryFilters.setSearchQuery}
+            sortBy={libraryFilters.sortBy()}
+            onSortByChange={libraryFilters.setSortBy}
+            sortOrder={libraryFilters.sortOrder()}
+            onSortOrderChange={libraryFilters.setSortOrder}
+            showHidden={libraryFilters.showHidden()}
+            onShowHiddenChange={libraryFilters.setShowHidden}
+            formatPlayTime={formatPlayTime}
+            onAddGame={addGame}
+            onStopTracking={stopTracking}
+            onLaunchGame={launchGame}
+            onRemoveGame={removeGame}
+            onSearchGame={(g) => { setSearchModal(g); setSearchQuery(g.title); }}
+            onOpenDetail={openDetail}
+            onHideGame={hideGame}
+            onSettings={() => setShowSettings(true)}
+          />
+        </Show>
+
+        {/* Detail View */}
+        <Show when={page().startsWith("detail") && vnDetail() && currentGame()}>
+          <Detail
+            page={page() as "detail" | "detail-chars"}
+            setPage={(p) => setPage(p)}
+            game={currentGame()!}
+            vnDetail={vnDetail()!}
+            characters={characters()}
+            userVn={userVn()}
+            runningGame={runningGame()}
+            settings={settings()}
+            showSpoilers={showSpoilers()}
+            setShowSpoilers={setShowSpoilers}
+            isRefreshing={isRefreshing()}
+            onBack={goBack}
+            onRefresh={refreshDetail}
+            onSettings={() => setShowSettings(true)}
+            onLaunchGame={launchGame}
+            onSetStatus={setStatus}
+            onSetVote={setVote}
+            formatPlayTime={formatPlayTime}
+            formatLastPlayed={formatLastPlayed}
+            shouldBlur={shouldBlur}
+          />
+        </Show>
+      </div>
 
       {/* Settings Modal */}
       <Show when={showSettings()}>
@@ -206,3 +221,4 @@ function App() {
 }
 
 export default App;
+

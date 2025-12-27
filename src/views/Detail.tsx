@@ -1,5 +1,6 @@
 import { createSignal, For, Show } from "solid-js";
-import { Play, Gamepad2, Clock, User, Star, ExternalLink, ChevronDown } from "lucide-solid";
+import { Play, Gamepad2, Clock, User, Star, ExternalLink, ChevronDown, Loader2 } from "lucide-solid";
+import { open } from "@tauri-apps/plugin-shell";
 import { Sidebar } from "../components/Sidebar";
 import type { Game, VndbVnDetail, VndbCharacter, VndbUserListItem, AppSettings, VndbTrait, VndbImage } from "../types";
 import { STATUS_LABELS, ROLE_NAMES, LENGTH_NAMES, TRAIT_ORDER } from "../constants";
@@ -15,6 +16,7 @@ interface DetailProps {
     settings: AppSettings;
     showSpoilers: boolean;
     setShowSpoilers: (show: boolean) => void;
+    isRefreshing: boolean;
     onBack: () => void;
     onRefresh: () => void;
     onSettings: () => void;
@@ -62,7 +64,7 @@ export function Detail(props: DetailProps) {
     );
 
     return (
-        <div class="flex h-screen bg-[#0F172A] font-['Figtree'] text-slate-200 overflow-hidden">
+        <div class="flex h-full bg-[#0F172A] font-['Figtree'] text-slate-200 overflow-hidden">
             <Sidebar
                 onBack={props.onBack}
                 onRefresh={props.onRefresh}
@@ -75,6 +77,16 @@ export function Detail(props: DetailProps) {
             <div class="flex-1 flex flex-col min-w-0 overflow-hidden relative">
                 {/* Background Pattern/Gradient */}
                 <div class="absolute top-0 right-0 w-[600px] h-[600px] bg-purple-900/10 blur-[120px] rounded-full pointer-events-none -translate-y-1/2 translate-x-1/3"></div>
+
+                {/* Loading Overlay */}
+                <Show when={props.isRefreshing}>
+                    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-40">
+                        <div class="flex flex-col items-center gap-4">
+                            <Loader2 class="w-12 h-12 text-slate-400 animate-spin" />
+                            <span class="text-slate-400 text-lg font-medium">Refreshing data...</span>
+                        </div>
+                    </div>
+                </Show>
 
                 {/* Tab Navigation Header */}
                 <div class="flex items-center gap-8 px-8 py-6 z-10">
@@ -232,7 +244,7 @@ export function Detail(props: DetailProps) {
                                         {props.vnDetail.description?.replace(/\[(url|spoiler|quote|raw|code)(?:=[^\]]*)?\]|\[\/(url|spoiler|quote|raw|code)\]/gi, "")}
                                     </div>
 
-                                    <button onClick={() => window.open(`https://vndb.org/${props.game.vndb_id}`, "_blank")} class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#334155] to-[#1E293B] hover:from-[#475569] hover:to-[#334155] border border-slate-600/50 rounded-xl text-slate-200 hover:text-white font-medium transition-all shadow-lg hover:shadow-xl group">
+                                    <button onClick={() => open(`https://vndb.org/${props.vnDetail.id}`)} class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#334155] to-[#1E293B] hover:from-[#475569] hover:to-[#334155] border border-slate-600/50 rounded-xl text-slate-200 hover:text-white font-medium transition-all shadow-lg hover:shadow-xl group">
                                         <ExternalLink class="w-4 h-4 group-hover:scale-110 transition-transform" />
                                         View on VNDB
                                     </button>
