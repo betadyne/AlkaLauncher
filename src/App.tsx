@@ -64,7 +64,30 @@ function App() {
   const stopTracking = async () => { await invoke("stop_tracking"); setRunningGame(null); await loadGames(); };
   const removeGame = async (id: string) => { await invoke("remove_game", { id }); await loadGames(); };
   const hideGame = async (id: string, hidden: boolean) => { await invoke("set_game_hidden", { id, hidden }); await loadGames(); };
-  const searchVndb = async () => { if (!searchQuery().trim()) return; setSearching(true); setSearchResults(await invoke<VndbSearchResult[]>("search_vndb", { query: searchQuery() })); setSearching(false); };
+  const searchVndb = async () => {
+    const query = searchQuery().trim();
+    if (!query) return;
+    setSearching(true);
+    const results = await invoke<VndbSearchResult[]>("search_vndb", { query });
+    // Only update if query hasn't changed during the request
+    if (searchQuery().trim() === query) {
+      setSearchResults(results);
+    }
+    setSearching(false);
+  };
+
+  // Debounced search: auto-search 300ms after user stops typing
+  let searchDebounceTimer: ReturnType<typeof setTimeout> | undefined;
+  const handleSearchInput = (value: string) => {
+    setSearchQuery(value);
+    clearTimeout(searchDebounceTimer);
+    if (value.trim()) {
+      searchDebounceTimer = setTimeout(searchVndb, 300);
+    } else {
+      setSearchResults([]);
+    }
+  };
+  onCleanup(() => clearTimeout(searchDebounceTimer));
   const linkVndb = async (vndb: VndbSearchResult) => { const g = searchModal(); if (!g) return; await invoke("update_game", { game: { ...g, title: vndb.title, vndb_id: vndb.id, cover_url: vndb.image?.url || null } }); await loadGames(); setSearchModal(null); setSearchResults([]); setSearchQuery(""); };
 
   const openDetail = async (game: Game, forceRefresh = false) => {
@@ -123,7 +146,7 @@ function App() {
   Promise.all([loadGames(), loadSettings()]);
 
   return (
-    <div class="h-screen flex flex-col bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div class="h-screen flex flex-col bg-[#0F172A]">
       {/* Custom Title Bar */}
       <TitleBar />
 
@@ -213,7 +236,7 @@ function App() {
           <div class="bg-slate-800 rounded-lg w-full max-w-lg max-h-[70vh] overflow-hidden">
             <div class="flex items-center justify-between p-3 border-b border-slate-700"><h2 class="text-lg font-bold text-white">Link to VNDB</h2><button onClick={() => { setSearchModal(null); setSearchResults([]); setSearchQuery(""); }} class="text-gray-400 hover:text-white"><X class="w-5 h-5" /></button></div>
             <div class="p-3">
-              <div class="flex gap-2 mb-3"><input type="text" value={searchQuery()} onInput={(e) => setSearchQuery(e.currentTarget.value)} onKeyPress={(e) => e.key === "Enter" && searchVndb()} placeholder="Search..." class="flex-1 px-3 py-1.5 bg-slate-700 rounded text-white text-sm" /><button onClick={searchVndb} disabled={searching()} class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 rounded text-white"><Search class="w-4 h-4" /></button></div>
+              <div class="flex gap-2 mb-3"><input type="text" value={searchQuery()} onInput={(e) => handleSearchInput(e.currentTarget.value)} onKeyPress={(e) => e.key === "Enter" && searchVndb()} placeholder="Search..." class="flex-1 px-3 py-1.5 bg-slate-700 rounded text-white text-sm" /><button onClick={searchVndb} disabled={searching()} class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 rounded text-white"><Search class="w-4 h-4" /></button></div>
               <div class="overflow-y-auto max-h-80 space-y-1">
                 <Show when={searching()}><p class="text-gray-400 text-center py-3 text-sm">Searching...</p></Show>
                 <For each={searchResults()}>{(r) => (<button onClick={() => linkVndb(r)} class="w-full flex items-center gap-2 p-2 bg-slate-700 hover:bg-slate-600 rounded text-left"><div class="w-10 h-14 bg-slate-600 rounded overflow-hidden flex-shrink-0"><Show when={r.image?.url}><img src={r.image!.url} alt={r.title} class={`w-full h-full object-cover ${shouldBlur(r.image) ? "blur-lg" : ""}`} /></Show></div><div class="flex-1 min-w-0"><h4 class="text-white text-sm font-medium truncate">{r.title}</h4><p class="text-xs text-gray-400">{r.id}{r.released && ` • ${r.released}`}{r.rating && ` • ${(r.rating / 10).toFixed(1)}`}</p></div></button>)}</For>
