@@ -1,7 +1,32 @@
+/* Local Fonts - manually loaded from /fonts/ directory */
+@font-face {
+  font-family: "Figtree";
+  src: url("/fonts/Figtree/Figtree-VariableFont_wght.woff2") format("woff2");
+  font-weight: 300 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("/fonts/Plus-Jakarta-Sans/PlusJakartaSans-VariableFont_wght.woff2") format("woff2");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Roboto";
+  src: url("/fonts/Roboto/Roboto-VariableFont_wdth,wght.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 @import "tailwindcss";
 
 :root {
-  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
+  font-family: "Figtree", "Plus Jakarta Sans", "Roboto", sans-serif;
   font-size: 16px;
   line-height: 24px;
   font-weight: 400;
