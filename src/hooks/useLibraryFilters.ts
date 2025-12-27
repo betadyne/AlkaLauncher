@@ -2,7 +2,7 @@ import { createSignal, createMemo, Accessor } from "solid-js";
 import { makePersisted } from "@solid-primitives/storage";
 import type { Game } from "../types";
 
-export type SortBy = "title" | "lastPlayed";
+export type SortBy = "title" | "lastPlayed" | "playTime";
 export type SortOrder = "asc" | "desc";
 
 export interface LibraryFilters {
@@ -57,6 +57,9 @@ export function useLibraryFilters(games: Accessor<Game[]>): LibraryFilters {
                 const aTime = a.last_played ? new Date(a.last_played).getTime() : 0;
                 const bTime = b.last_played ? new Date(b.last_played).getTime() : 0;
                 cmp = bTime - aTime; // Default: most recent first
+            } else if (sortBy() === "playTime") {
+                // Most played first (higher play_time first)
+                cmp = b.play_time - a.play_time;
             }
             return sortOrder() === "desc" ? -cmp : cmp;
         });

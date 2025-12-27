@@ -211,10 +211,11 @@ export function Library(props: LibraryProps) {
                             props.onSortByChange(option.value as SortBy);
                             setShowSortDropdown(false);
                           }}
-                          class={`w-full flex items-center justify-between px-4 py-2.5 text-sm text-left hover:bg-[#334155] transition-colors ${props.sortBy === option.value
+                          class={`w-full flex items-center justify-between px-4 py-2.5 text-sm text-left hover:bg-[#334155] transition-colors ${
+                            props.sortBy === option.value
                               ? "text-white"
                               : "text-slate-400"
-                            }`}
+                          }`}
                         >
                           <span>{option.label}</span>
                           <Show when={props.sortBy === option.value}>
@@ -235,10 +236,11 @@ export function Library(props: LibraryProps) {
                     setShowFiltersDropdown(!showFiltersDropdown());
                     setShowSortDropdown(false);
                   }}
-                  class={`flex items-center gap-2 px-3 py-2 border rounded-xl text-sm transition-colors ${props.showHidden
-                      ? "bg-purple-500/20 border-purple-500/50 text-purple-300"
+                  class={`flex items-center gap-2 px-3 py-2 border rounded-xl text-sm transition-colors ${
+                    props.showHidden
+                      ? "bg-blue-500/20 border-blue-500/50 text-blue-300"
                       : "bg-[#1E293B] border-slate-700/50 text-slate-400 hover:border-slate-600"
-                    }`}
+                  }`}
                 >
                   <Filter class="w-4 h-4" />
                   <span>Filters</span>
@@ -256,7 +258,7 @@ export function Library(props: LibraryProps) {
                         onChange={(e) =>
                           props.onShowHiddenChange(e.currentTarget.checked)
                         }
-                        class="w-4 h-4 rounded border-slate-600 bg-slate-700 text-purple-500 focus:ring-purple-500 focus:ring-offset-0 cursor-pointer"
+                        class="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-0 cursor-pointer"
                       />
                       <span class="text-sm text-slate-300">
                         Show Hidden Games
@@ -272,19 +274,21 @@ export function Library(props: LibraryProps) {
               <div class="flex gap-1 bg-[#1E293B] border border-slate-700/50 rounded-lg p-1">
                 <button
                   onClick={() => setViewMode("grid")}
-                  class={`p-1.5 rounded transition-colors ${viewMode() === "grid"
+                  class={`p-1.5 rounded transition-colors ${
+                    viewMode() === "grid"
                       ? "text-white bg-slate-700/50"
                       : "text-slate-500 hover:text-slate-300"
-                    }`}
+                  }`}
                 >
                   <LayoutGrid class="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => setViewMode("list")}
-                  class={`p-1.5 rounded transition-colors ${viewMode() === "list"
+                  class={`p-1.5 rounded transition-colors ${
+                    viewMode() === "list"
                       ? "text-white bg-slate-700/50"
                       : "text-slate-500 hover:text-slate-300"
-                    }`}
+                  }`}
                 >
                   <List class="w-4 h-4" />
                 </button>
@@ -318,8 +322,9 @@ export function Library(props: LibraryProps) {
                   <For each={props.filteredGames}>
                     {(game) => (
                       <div
-                        class={`group flex items-center gap-4 p-3 bg-[#1E293B] rounded-xl border border-transparent hover:border-purple-500/50 cursor-pointer transition-all ${game.is_hidden && props.showHidden ? "opacity-50" : ""
-                          } ${props.runningGame === game.id ? "ring-2 ring-green-500" : ""}`}
+                        class={`group flex items-center gap-4 p-3 bg-[#1E293B] rounded-xl border border-transparent hover:border-blue-500/50 cursor-pointer transition-all ${
+                          game.is_hidden && props.showHidden ? "opacity-50" : ""
+                        } ${props.runningGame === game.id ? "ring-2 ring-green-500" : ""}`}
                         onClick={() =>
                           game.vndb_id
                             ? props.onOpenDetail(game)

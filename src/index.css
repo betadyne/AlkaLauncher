@@ -95,8 +95,8 @@ input[type="checkbox"] {
 }
 
 input[type="checkbox"]:checked {
-  background-color: #a855f7;
-  border-color: #a855f7;
+  background-color: #3b82f6;
+  border-color: #3b82f6;
 }
 
 input[type="checkbox"]:checked::after {
@@ -112,7 +112,7 @@ input[type="checkbox"]:checked::after {
 }
 
 input[type="checkbox"]:hover {
-  border-color: #a855f7;
+  border-color: #3b82f6;
 }
 
 /* Dropdown/Menu animations */
