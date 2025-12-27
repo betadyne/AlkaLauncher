@@ -1,5 +1,6 @@
-import { createSignal, For, Show, onCleanup, createEffect } from "solid-js";
+import { createSignal, For, Show, onCleanup } from "solid-js";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Search, X, User } from "lucide-solid";
 
@@ -108,9 +109,14 @@ function App() {
     return date.toLocaleDateString();
   };
 
-  let poll: number | undefined;
-  createEffect(() => { if (runningGame()) { poll = setInterval(async () => { const r = await invoke<string | null>("poll_running_game"); if (r !== runningGame()) { setRunningGame(r); if (!r) await loadGames(); } }, 2000) as unknown as number; } else if (poll) { clearInterval(poll); poll = undefined; } });
-  onCleanup(() => poll && clearInterval(poll));
+  // Listen for game-exited event from backend (replaces polling)
+  let unlistenGameExited: (() => void) | undefined;
+  listen<{ game_id: string; play_minutes: number }>("game-exited", async (event) => {
+    console.log("Game exited:", event.payload);
+    setRunningGame(null);
+    await loadGames(); // Refresh to show updated playtime
+  }).then(unlisten => { unlistenGameExited = unlisten; });
+  onCleanup(() => unlistenGameExited?.());
 
   // Fast startup - init backend cache, then load data in parallel
   invoke("init_app"); // Fire and forget - pre-init cache db

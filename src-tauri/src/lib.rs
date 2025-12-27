@@ -2,14 +2,21 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-use std::process::{Child, Command};
-use std::sync::Mutex;
+use std::process::Command;
+use parking_lot::Mutex;
 use std::time::Instant;
-use tauri::State;
+use tauri::{State, Emitter, Manager};
 use uuid::Uuid;
 use redb::{Database, TableDefinition};
 use chrono::Local;
 use tokio::task;
+
+// Event payload for game exit notification
+#[derive(Debug, Clone, Serialize)]
+pub struct GameExitedPayload {
+    pub game_id: String,
+    pub play_minutes: u64,
+}
 
 // Cache table definitions
 const VN_CACHE: TableDefinition<&str, &[u8]> = TableDefinition::new("vn_cache");
@@ -175,8 +182,6 @@ pub struct AppState {
 struct RunningGame {
     id: String,
     start_time: Instant,
-    #[allow(dead_code)]
-    process: Child,
 }
 
 // NO_REPLACE: Remove lazy initialization logic
@@ -213,10 +218,26 @@ fn get_current_timestamp() -> String {
     Local::now().to_rfc3339()
 }
 
+// Atomic write: write to temp file, sync, then rename
+fn atomic_write(path: &std::path::Path, content: &str) -> Result<(), String> {
+    use std::io::Write;
+    let tmp_path = path.with_extension("json.tmp");
+    let file = fs::File::create(&tmp_path)
+        .map_err(|e| format!("Failed to create temp file: {}", e))?;
+    {
+        let mut writer = std::io::BufWriter::new(&file);
+        writer.write_all(content.as_bytes())
+            .map_err(|e| format!("Failed to write temp file: {}", e))?;
+        writer.flush().map_err(|e| format!("Failed to flush: {}", e))?;
+    }
+    file.sync_all().map_err(|e| format!("Failed to sync: {}", e))?;
+    fs::rename(&tmp_path, path).map_err(|e| format!("Failed to rename: {}", e))
+}
+
 fn save_games(games: &[GameMetadata]) -> Result<(), String> {
     let path = get_data_path();
     let json = serde_json::to_string_pretty(games).map_err(|e| e.to_string())?;
-    fs::write(path, json).map_err(|e| e.to_string())
+    atomic_write(&path, &json)
 }
 
 fn load_games() -> Result<Vec<GameMetadata>, String> {
@@ -247,7 +268,7 @@ fn load_games() -> Result<Vec<GameMetadata>, String> {
 fn save_settings(settings: &AppSettings) -> Result<(), String> {
     let path = get_settings_path();
     let json = serde_json::to_string_pretty(settings).map_err(|e| e.to_string())?;
-    fs::write(path, json).map_err(|e| e.to_string())
+    atomic_write(&path, &json)
 }
 
 fn load_settings() -> AppSettings {
@@ -277,7 +298,7 @@ fn load_daily_playtime() -> DailyPlaytimeData {
 fn save_daily_playtime(data: &DailyPlaytimeData) -> Result<(), String> {
     let path = get_daily_playtime_path();
     let json = serde_json::to_string_pretty(data).map_err(|e| e.to_string())?;
-    fs::write(path, json).map_err(|e| e.to_string())
+    atomic_write(&path, &json)
 }
 
 // Record playtime for a game on a specific date
@@ -297,10 +318,8 @@ fn record_daily_playtime(game_id: &str, minutes: u64) {
 }
 
 // VNDB API helper - creates the shared client once
-fn create_http_client() -> reqwest::Client {
-    reqwest::Client::builder()
-        .build()
-        .unwrap()
+fn create_http_client() -> Result<reqwest::Client, reqwest::Error> {
+    reqwest::Client::builder().build()
 }
 
 // === CACHE (Disk) ===
@@ -337,7 +356,7 @@ fn init_app() {
 #[tauri::command]
 #[specta::specta]
 fn get_all_games(state: State<AppState>) -> Vec<GameMetadata> {
-    state.games.lock().unwrap().clone()
+    state.games.lock().clone()
 }
 
 #[tauri::command]
@@ -362,7 +381,7 @@ fn add_local_game(path: String, state: State<AppState>) -> Result<GameMetadata, 
         is_hidden: false,
     };
 
-    let mut games = state.games.lock().unwrap();
+    let mut games = state.games.lock();
     games.push(game.clone());
     save_games(&games)?;
 
@@ -372,7 +391,7 @@ fn add_local_game(path: String, state: State<AppState>) -> Result<GameMetadata, 
 #[tauri::command]
 #[specta::specta]
 fn remove_game(id: String, state: State<AppState>) -> Result<(), String> {
-    let mut games = state.games.lock().unwrap();
+    let mut games = state.games.lock();
     games.retain(|g| g.id != id);
     save_games(&games)
 }
@@ -380,7 +399,7 @@ fn remove_game(id: String, state: State<AppState>) -> Result<(), String> {
 #[tauri::command]
 #[specta::specta]
 fn update_game(game: GameMetadata, state: State<AppState>) -> Result<(), String> {
-    let mut games = state.games.lock().unwrap();
+    let mut games = state.games.lock();
     if let Some(existing) = games.iter_mut().find(|g| g.id == game.id) {
         *existing = game;
     }
@@ -390,7 +409,7 @@ fn update_game(game: GameMetadata, state: State<AppState>) -> Result<(), String>
 #[tauri::command]
 #[specta::specta]
 fn set_game_hidden(id: String, hidden: bool, state: State<AppState>) -> Result<(), String> {
-    let mut games = state.games.lock().unwrap();
+    let mut games = state.games.lock();
     if let Some(game) = games.iter_mut().find(|g| g.id == id) {
         game.is_hidden = hidden;
     }
@@ -427,7 +446,7 @@ async fn fetch_vndb_detail(vndb_id: String, force_refresh: Option<bool>, state: 
     
     // 1. Check in-memory cache first (instant)
     if !refresh {
-        if let Some(cached) = state.vn_mem_cache.lock().unwrap().get(&vndb_id) {
+        if let Some(cached) = state.vn_mem_cache.lock().get(&vndb_id) {
             return Ok(cached.clone());
         }
     }
@@ -441,7 +460,7 @@ async fn fetch_vndb_detail(vndb_id: String, force_refresh: Option<bool>, state: 
         });
         if let Some(cached) = cached {
             // Store in memory for next access
-            state.vn_mem_cache.lock().unwrap().insert(vndb_id.clone(), cached.clone());
+            state.vn_mem_cache.lock().insert(vndb_id.clone(), cached.clone());
             return Ok(cached);
         }
     }
@@ -465,7 +484,7 @@ async fn fetch_vndb_detail(vndb_id: String, force_refresh: Option<bool>, state: 
     let detail = vndb_response.results.into_iter().next().ok_or_else(|| "VN not found".to_string())?;
 
     // Store in both memory and disk cache
-    state.vn_mem_cache.lock().unwrap().insert(vndb_id.clone(), detail.clone());
+    state.vn_mem_cache.lock().insert(vndb_id.clone(), detail.clone());
     let db_ref = state.db.as_ref();
     let vndb_id_clone = vndb_id.clone();
     let detail_clone = detail.clone();
@@ -483,7 +502,7 @@ async fn fetch_vndb_characters(vndb_id: String, force_refresh: Option<bool>, sta
     
     // 1. Check in-memory cache first (instant)
     if !refresh {
-        if let Some(cached) = state.char_mem_cache.lock().unwrap().get(&vndb_id) {
+        if let Some(cached) = state.char_mem_cache.lock().get(&vndb_id) {
             return Ok(cached.clone());
         }
     }
@@ -496,7 +515,7 @@ async fn fetch_vndb_characters(vndb_id: String, force_refresh: Option<bool>, sta
             disk_cache_get::<Vec<VndbCharacter>>(db_ref, CHAR_CACHE, &vndb_id_clone)
         });
         if let Some(cached) = cached {
-            state.char_mem_cache.lock().unwrap().insert(vndb_id.clone(), cached.clone());
+            state.char_mem_cache.lock().insert(vndb_id.clone(), cached.clone());
             return Ok(cached);
         }
     }
@@ -520,7 +539,7 @@ async fn fetch_vndb_characters(vndb_id: String, force_refresh: Option<bool>, sta
     let chars = vndb_response.results;
 
     // Store in both memory and disk cache
-    state.char_mem_cache.lock().unwrap().insert(vndb_id.clone(), chars.clone());
+    state.char_mem_cache.lock().insert(vndb_id.clone(), chars.clone());
     let db_ref = state.db.as_ref();
     let vndb_id_clone = vndb_id.clone();
     let chars_clone = chars.clone();
@@ -535,8 +554,8 @@ async fn fetch_vndb_characters(vndb_id: String, force_refresh: Option<bool>, sta
 #[specta::specta]
 fn clear_vndb_cache(vndb_id: String, state: State<AppState>) -> Result<(), String> {
     // Clear memory cache
-    state.vn_mem_cache.lock().unwrap().remove(&vndb_id);
-    state.char_mem_cache.lock().unwrap().remove(&vndb_id);
+    state.vn_mem_cache.lock().remove(&vndb_id);
+    state.char_mem_cache.lock().remove(&vndb_id);
     
     // Clear disk cache
     if let Some(db) = state.db.as_ref() {
@@ -553,8 +572,8 @@ fn clear_vndb_cache(vndb_id: String, state: State<AppState>) -> Result<(), Strin
 #[specta::specta]
 fn clear_all_cache(state: State<AppState>) -> Result<(), String> {
     // Clear memory cache
-    state.vn_mem_cache.lock().unwrap().clear();
-    state.char_mem_cache.lock().unwrap().clear();
+    state.vn_mem_cache.lock().clear();
+    state.char_mem_cache.lock().clear();
     
     // Clear disk cache - just delete the file
     let path = get_data_dir().join("vndb_cache.redb");
@@ -569,13 +588,13 @@ fn clear_all_cache(state: State<AppState>) -> Result<(), String> {
 #[tauri::command]
 #[specta::specta]
 fn get_settings(state: State<AppState>) -> AppSettings {
-    state.settings.lock().unwrap().clone()
+    state.settings.lock().clone()
 }
 
 #[tauri::command]
 #[specta::specta]
 fn save_vndb_token(token: String, state: State<AppState>) -> Result<(), String> {
-    let mut settings = state.settings.lock().unwrap();
+    let mut settings = state.settings.lock();
     settings.vndb_token = Some(token);
     save_settings(&settings)
 }
@@ -583,7 +602,7 @@ fn save_vndb_token(token: String, state: State<AppState>) -> Result<(), String> 
 #[tauri::command]
 #[specta::specta]
 fn clear_vndb_token(state: State<AppState>) -> Result<(), String> {
-    let mut settings = state.settings.lock().unwrap();
+    let mut settings = state.settings.lock();
     settings.vndb_token = None;
     settings.vndb_user_id = None;
     save_settings(&settings)
@@ -592,7 +611,7 @@ fn clear_vndb_token(state: State<AppState>) -> Result<(), String> {
 #[tauri::command]
 #[specta::specta]
 fn set_blur_nsfw(blur: bool, state: State<AppState>) -> Result<(), String> {
-    let mut settings = state.settings.lock().unwrap();
+    let mut settings = state.settings.lock();
     settings.blur_nsfw = blur;
     save_settings(&settings)
 }
@@ -601,7 +620,7 @@ fn set_blur_nsfw(blur: bool, state: State<AppState>) -> Result<(), String> {
 #[specta::specta]
 async fn vndb_auth_check(state: State<'_, AppState>) -> Result<VndbAuthInfo, String> {
     let token = {
-        let settings = state.settings.lock().unwrap();
+        let settings = state.settings.lock();
         settings.vndb_token.clone().ok_or("No VNDB token configured")?
     };
     
@@ -619,7 +638,7 @@ async fn vndb_auth_check(state: State<'_, AppState>) -> Result<VndbAuthInfo, Str
     let auth_info: VndbAuthInfo = response.json().await.map_err(|e| e.to_string())?;
     
     // Save user ID
-    let mut settings = state.settings.lock().unwrap();
+    let mut settings = state.settings.lock();
     settings.vndb_user_id = Some(auth_info.id.clone());
     let _ = save_settings(&settings);
     
@@ -629,7 +648,7 @@ async fn vndb_auth_check(state: State<'_, AppState>) -> Result<VndbAuthInfo, Str
 #[tauri::command]
 #[specta::specta]
 async fn vndb_get_user_vn(vndb_id: String, state: State<'_, AppState>) -> Result<Option<VndbUserListItem>, String> {
-    let settings = state.settings.lock().unwrap().clone();
+    let settings = state.settings.lock().clone();
     let token = settings.vndb_token.ok_or("No VNDB token")?;
     let user_id = settings.vndb_user_id.ok_or("Not authenticated")?;
     
@@ -656,7 +675,7 @@ async fn vndb_get_user_vn(vndb_id: String, state: State<'_, AppState>) -> Result
 #[tauri::command]
 #[specta::specta]
 async fn vndb_set_status(vndb_id: String, label_id: i32, state: State<'_, AppState>) -> Result<(), String> {
-    let settings = state.settings.lock().unwrap().clone();
+    let settings = state.settings.lock().clone();
     let token = settings.vndb_token.ok_or("No VNDB token")?;
     
     // Labels: 1=Playing, 2=Finished, 3=Stalled, 4=Dropped, 5=Wishlist
@@ -685,7 +704,7 @@ async fn vndb_set_status(vndb_id: String, label_id: i32, state: State<'_, AppSta
 #[tauri::command]
 #[specta::specta]
 async fn vndb_set_vote(vndb_id: String, vote: i32, state: State<'_, AppState>) -> Result<(), String> {
-    let settings = state.settings.lock().unwrap().clone();
+    let settings = state.settings.lock().clone();
     let token = settings.vndb_token.ok_or("No VNDB token")?;
     
     // Vote is 10-100 (e.g., 75 = 7.5)
@@ -710,7 +729,7 @@ async fn vndb_set_vote(vndb_id: String, vote: i32, state: State<'_, AppState>) -
 #[tauri::command]
 #[specta::specta]
 async fn vndb_remove_vote(vndb_id: String, state: State<'_, AppState>) -> Result<(), String> {
-    let settings = state.settings.lock().unwrap().clone();
+    let settings = state.settings.lock().clone();
     let token = settings.vndb_token.ok_or("No VNDB token")?;
     
     let body = serde_json::json!({ "vote": null });
@@ -732,8 +751,8 @@ async fn vndb_remove_vote(vndb_id: String, state: State<'_, AppState>) -> Result
 
 #[tauri::command]
 #[specta::specta]
-fn launch_game(id: String, state: State<AppState>) -> Result<(), String> {
-    let games = state.games.lock().unwrap();
+fn launch_game(id: String, app_handle: tauri::AppHandle, state: State<AppState>) -> Result<(), String> {
+    let games = state.games.lock();
     let game = games
         .iter()
         .find(|g| g.id == id)
@@ -750,7 +769,7 @@ fn launch_game(id: String, state: State<AppState>) -> Result<(), String> {
     }
 
     // Spawn the process with detailed error handling
-    let child = Command::new(&path)
+    let mut child = Command::new(&path)
         .current_dir(path.parent().unwrap_or(&path))
         .spawn()
         .map_err(|e| {
@@ -763,11 +782,62 @@ fn launch_game(id: String, state: State<AppState>) -> Result<(), String> {
             }
         })?;
 
-    let mut running = state.running_game.lock().unwrap();
-    *running = Some(RunningGame {
-        id: id.clone(),
-        start_time: Instant::now(),
-        process: child,
+    // Store running game state
+    let start_time = Instant::now();
+    {
+        let mut running = state.running_game.lock();
+        *running = Some(RunningGame {
+            id: id.clone(),
+            start_time,
+        });
+    }
+    drop(games);
+
+    // Clone app_handle for the async task
+    let app_handle_clone = app_handle.clone();
+    let game_id = id.clone();
+
+    // Spawn async task to monitor process exit
+    tauri::async_runtime::spawn(async move {
+        // Wait for process to exit in blocking thread
+        let exit_result = task::spawn_blocking(move || {
+            child.wait()
+        }).await;
+
+        // Calculate playtime
+        let minutes = start_time.elapsed().as_secs() / 60;
+
+        // Get state from app handle
+        let state = app_handle_clone.state::<AppState>();
+
+        // Update game data
+        {
+            let mut games = state.games.lock();
+            if let Some(g) = games.iter_mut().find(|g| g.id == game_id) {
+                g.play_time += minutes;
+                g.last_played = Some(get_current_timestamp());
+                let _ = save_games(&games);
+            }
+        }
+
+        // Record daily playtime
+        record_daily_playtime(&game_id, minutes);
+
+        // Clear running state
+        {
+            let mut running = state.running_game.lock();
+            *running = None;
+        }
+
+        // Emit game-exited event to frontend
+        let _ = app_handle.emit("game-exited", GameExitedPayload {
+            game_id: game_id.clone(),
+            play_minutes: minutes,
+        });
+
+        if let Ok(Err(e)) = exit_result {
+            eprintln!("Game process error: {}", e);
+        }
     });
 
     Ok(())
@@ -776,13 +846,13 @@ fn launch_game(id: String, state: State<AppState>) -> Result<(), String> {
 #[tauri::command]
 #[specta::specta]
 fn stop_tracking(state: State<AppState>) -> Result<u64, String> {
-    let mut running = state.running_game.lock().unwrap();
+    let mut running = state.running_game.lock();
     if let Some(game) = running.take() {
         let elapsed = game.start_time.elapsed();
         let minutes = elapsed.as_secs() / 60;
         let game_id = game.id.clone();
 
-        let mut games = state.games.lock().unwrap();
+        let mut games = state.games.lock();
         if let Some(g) = games.iter_mut().find(|g| g.id == game_id) {
             g.play_time += minutes;
             g.last_played = Some(get_current_timestamp());
@@ -801,52 +871,16 @@ fn stop_tracking(state: State<AppState>) -> Result<u64, String> {
 #[tauri::command]
 #[specta::specta]
 fn poll_running_game(state: State<AppState>) -> Option<String> {
-    let mut running = state.running_game.lock().unwrap();
-    
-    if let Some(ref mut game) = *running {
-        // Check if process has exited
-        match game.process.try_wait() {
-            Ok(Some(_status)) => {
-                // Process has exited, save playtime and clear state
-                let elapsed = game.start_time.elapsed();
-                let minutes = elapsed.as_secs() / 60;
-                let game_id = game.id.clone();
-                
-                // Update playtime and last_played
-                let mut games = state.games.lock().unwrap();
-                if let Some(g) = games.iter_mut().find(|g| g.id == game_id) {
-                    g.play_time += minutes;
-                    g.last_played = Some(get_current_timestamp());
-                    let _ = save_games(&games);
-                }
-                drop(games);
-                
-                // Record daily playtime for progress reports
-                record_daily_playtime(&game_id, minutes);
-                
-                // Clear running state
-                *running = None;
-                return None;
-            }
-            Ok(None) => {
-                // Process still running
-                return Some(game.id.clone());
-            }
-            Err(_) => {
-                // Error checking status, assume not running
-                *running = None;
-                return None;
-            }
-        }
-    }
-    
-    None
+    // With event-based architecture, this just returns the current running game ID
+    // The actual process monitoring is done by the async task spawned in launch_game
+    let running = state.running_game.lock();
+    running.as_ref().map(|g| g.id.clone())
 }
 
 #[tauri::command]
 #[specta::specta]
 fn get_elapsed_time(state: State<AppState>) -> u64 {
-    let running = state.running_game.lock().unwrap();
+    let running = state.running_game.lock();
     running
         .as_ref()
         .map(|r| r.start_time.elapsed().as_secs())
@@ -875,13 +909,21 @@ pub fn run() {
         }
     };
 
+    let http_client = match create_http_client() {
+        Ok(client) => client,
+        Err(e) => {
+            eprintln!("Failed to create HTTP client: {}. Running with default client.", e);
+            reqwest::Client::new()
+        }
+    };
+
     let state = AppState {
         games: Mutex::new(games),
         running_game: Mutex::new(None),
         settings: Mutex::new(load_settings()),
         vn_mem_cache: Mutex::new(HashMap::new()),
         char_mem_cache: Mutex::new(HashMap::new()),
-        http_client: create_http_client(),
+        http_client,
         db,
     };
 

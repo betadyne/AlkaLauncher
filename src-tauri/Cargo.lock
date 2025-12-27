@@ -42,6 +42,7 @@ dependencies = [
  "chrono",
  "dirs",
  "log",
+ "parking_lot",
  "redb",
  "reqwest",
  "serde",
