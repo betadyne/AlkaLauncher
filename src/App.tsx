@@ -116,7 +116,8 @@ function App() {
   const setStatus = async (labelId: number) => { const g = currentGame(); if (!g?.vndb_id) return; await invoke("vndb_set_status", { vndbId: g.vndb_id, labelId }); setUserVn(await invoke<VndbUserListItem | null>("vndb_get_user_vn", { vndbId: g.vndb_id })); };
   const setVote = async (vote: number) => { const g = currentGame(); if (!g?.vndb_id) return; await invoke("vndb_set_vote", { vndbId: g.vndb_id, vote }); setUserVn(await invoke<VndbUserListItem | null>("vndb_get_user_vn", { vndbId: g.vndb_id })); };
 
-  const shouldBlur = (img: VndbImage | null): boolean => !!(settings().blur_nsfw && img && (img.sexual > 1 || img.violence > 1));
+  // Blur NSFW: sexual >= 1 (Suggestive, Explicit) or violence >= 1 (Violent, Brutal)
+  const shouldBlur = (img: VndbImage | null): boolean => !!(settings().blur_nsfw && img && (img.sexual >= 1 || img.violence >= 1));
   const formatPlayTime = (m: number) => m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
   const formatLastPlayed = (timestamp: string | null) => {
     if (!timestamp) return "Never";
