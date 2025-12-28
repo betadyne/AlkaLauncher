@@ -2,7 +2,7 @@ import { createSignal, For, Show, onCleanup } from "solid-js";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Search, X, User } from "lucide-solid";
+import { Search, X, User, RefreshCw } from "lucide-solid";
 
 import type {
   Game,
@@ -14,10 +14,12 @@ import type {
   VndbImage,
 } from "./types";
 import { useLibraryFilters } from "./hooks/useLibraryFilters";
+import { useUpdater } from "./hooks/useUpdater";
 
 import { Library } from "./views/Library";
 import { Detail } from "./views/Detail";
 import { TitleBar } from "./components/TitleBar";
+import { UpdateDialog } from "./components/UpdateDialog";
 
 function App() {
   const [games, setGames] = createSignal<Game[]>([]);
@@ -52,6 +54,9 @@ function App() {
 
   // Library filters hook
   const libraryFilters = useLibraryFilters(games);
+
+  // Updater hook (auto-checks on mount)
+  const updater = useUpdater();
 
   const loadGames = async () => {
     const [gamesData, running] = await Promise.all([
@@ -415,6 +420,19 @@ function App() {
                   Remove all cached VN and character data
                 </p>
               </div>
+              <div class="pt-2 border-t border-slate-700">
+                <button
+                  onClick={() => updater.checkForUpdates(false)}
+                  disabled={updater.status() === "checking"}
+                  class="w-full px-3 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 rounded text-sm text-gray-300 flex items-center justify-center gap-2"
+                >
+                  <RefreshCw class={`w-4 h-4 ${updater.status() === "checking" ? "animate-spin" : ""}`} />
+                  {updater.status() === "checking" ? "Checking..." : "Check for Updates"}
+                </button>
+                <p class="text-xs text-gray-500 mt-1">
+                  Current version: v{__APP_VERSION__}
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -494,6 +512,17 @@ function App() {
           </div>
         </div>
       </Show>
+
+      {/* Update Dialog */}
+      <UpdateDialog
+        status={updater.status()}
+        updateInfo={updater.updateInfo()}
+        downloadProgress={updater.downloadProgress()}
+        error={updater.error()}
+        onDownload={updater.downloadAndInstall}
+        onRestart={updater.restartApp}
+        onDismiss={updater.dismissUpdate}
+      />
     </div>
   );
 }

@@ -89,9 +89,7 @@ export function Library(props: LibraryProps) {
       {/* Sidebar */}
       <aside class="w-64 bg-[#0F172A]/95 flex flex-col border-r border-slate-800/50">
         <div class="p-6 flex items-center gap-3">
-          <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-            <Gamepad2 class="w-6 h-6 text-white" />
-          </div>
+          <img src="/icon.png" alt="Alka Launcher" class="w-10 h-10" />
           <h1 class="font-bold text-xl text-white tracking-tight">
             Alka Launcher
           </h1>
@@ -211,11 +209,10 @@ export function Library(props: LibraryProps) {
                             props.onSortByChange(option.value as SortBy);
                             setShowSortDropdown(false);
                           }}
-                          class={`w-full flex items-center justify-between px-4 py-2.5 text-sm text-left hover:bg-[#334155] transition-colors ${
-                            props.sortBy === option.value
+                          class={`w-full flex items-center justify-between px-4 py-2.5 text-sm text-left hover:bg-[#334155] transition-colors ${props.sortBy === option.value
                               ? "text-white"
                               : "text-slate-400"
-                          }`}
+                            }`}
                         >
                           <span>{option.label}</span>
                           <Show when={props.sortBy === option.value}>
@@ -236,11 +233,10 @@ export function Library(props: LibraryProps) {
                     setShowFiltersDropdown(!showFiltersDropdown());
                     setShowSortDropdown(false);
                   }}
-                  class={`flex items-center gap-2 px-3 py-2 border rounded-xl text-sm transition-colors ${
-                    props.showHidden
+                  class={`flex items-center gap-2 px-3 py-2 border rounded-xl text-sm transition-colors ${props.showHidden
                       ? "bg-blue-500/20 border-blue-500/50 text-blue-300"
                       : "bg-[#1E293B] border-slate-700/50 text-slate-400 hover:border-slate-600"
-                  }`}
+                    }`}
                 >
                   <Filter class="w-4 h-4" />
                   <span>Filters</span>
@@ -274,21 +270,19 @@ export function Library(props: LibraryProps) {
               <div class="flex gap-1 bg-[#1E293B] border border-slate-700/50 rounded-lg p-1">
                 <button
                   onClick={() => setViewMode("grid")}
-                  class={`p-1.5 rounded transition-colors ${
-                    viewMode() === "grid"
+                  class={`p-1.5 rounded transition-colors ${viewMode() === "grid"
                       ? "text-white bg-slate-700/50"
                       : "text-slate-500 hover:text-slate-300"
-                  }`}
+                    }`}
                 >
                   <LayoutGrid class="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => setViewMode("list")}
-                  class={`p-1.5 rounded transition-colors ${
-                    viewMode() === "list"
+                  class={`p-1.5 rounded transition-colors ${viewMode() === "list"
                       ? "text-white bg-slate-700/50"
                       : "text-slate-500 hover:text-slate-300"
-                  }`}
+                    }`}
                 >
                   <List class="w-4 h-4" />
                 </button>
@@ -322,9 +316,8 @@ export function Library(props: LibraryProps) {
                   <For each={props.filteredGames}>
                     {(game) => (
                       <div
-                        class={`group flex items-center gap-4 p-3 bg-[#1E293B] rounded-xl border border-transparent hover:border-blue-500/50 cursor-pointer transition-all ${
-                          game.is_hidden && props.showHidden ? "opacity-50" : ""
-                        } ${props.runningGame === game.id ? "ring-2 ring-green-500" : ""}`}
+                        class={`group flex items-center gap-4 p-3 bg-[#1E293B] rounded-xl border border-transparent hover:border-blue-500/50 cursor-pointer transition-all ${game.is_hidden && props.showHidden ? "opacity-50" : ""
+                          } ${props.runningGame === game.id ? "ring-2 ring-green-500" : ""}`}
                         onClick={() =>
                           game.vndb_id
                             ? props.onOpenDetail(game)
