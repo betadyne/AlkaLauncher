@@ -15,7 +15,7 @@ npm-debug.log*
 .env.*
 *.local
 
-# Signing keys (NEVER commit private keys!)
+# Signing keys
 ~
 *.key
 *.key.pub
