@@ -15,6 +15,11 @@ npm-debug.log*
 .env.*
 *.local
 
+# Signing keys (NEVER commit private keys!)
+~
+*.key
+*.key.pub
+
 # OS generated files
 .DS_Store
 Thumbs.db
