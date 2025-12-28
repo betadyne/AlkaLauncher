@@ -35,14 +35,29 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: 'Alka Launcher ${{ github.ref_name }}'
+          releaseName: 'AlkaLauncher ${{ github.ref_name }}'
           releaseBody: |
             ## Downloads
-            - **NSIS Installer** (`.exe`): Recommended for most users
-            - **MSI Installer** (`.msi`): For enterprise/admin installs
+            - **Installer** (`.exe`): Recommended for most users
+            - **Portable** (`.zip`): No installation required
             
             ## Auto-Update
             This version supports auto-update. You will be notified when a new version is available.
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: true
+
+      - name: Create portable zip
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          $exePath = "src-tauri/target/release/AlkaLauncher.exe"
+          $zipName = "AlkaLauncher_${version}_x64-portable.zip"
+          Compress-Archive -Path $exePath -DestinationPath $zipName
+
+      - name: Upload portable zip to release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: AlkaLauncher_*-portable.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
