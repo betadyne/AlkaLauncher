@@ -35,7 +35,6 @@ export const SettingsProvider: ParentComponent = (props) => {
     const loadSettings = async () => {
         setLoading(true);
         try {
-            // getSettings returns AppSettings directly, not Result
             const settings = await api.getSettings();
             setSettings(settings);
         } catch (e) {

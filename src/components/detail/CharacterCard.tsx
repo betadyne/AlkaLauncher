@@ -10,7 +10,6 @@ interface CharacterCardProps {
     shouldBlur: (img: VndbImage | null) => boolean;
 }
 
-// Group and sort traits by category
 function groupTraits(traits: VndbTrait[] | null | undefined, showSpoiler: boolean): [string, VndbTrait[]][] {
     if (!traits) return [];
     const groups: Record<string, VndbTrait[]> = {};
@@ -24,7 +23,6 @@ function groupTraits(traits: VndbTrait[] | null | undefined, showSpoiler: boolea
         .concat(Object.entries(groups).filter(([g]) => !TRAIT_ORDER.includes(g)));
 }
 
-// Render trait values with spoiler indicators
 function TraitValue(props: { traits: VndbTrait[] }) {
     return (
         <span>
@@ -71,7 +69,6 @@ export function CharacterCard(props: CharacterCardProps) {
 
             {/* Character Info */}
             <div class="flex-1 min-w-0">
-                {/* Header */}
                 <div class="flex items-center gap-3 mb-4 border-b border-slate-700/50 pb-4 flex-wrap">
                     <h3 class={`text-2xl font-bold font-['Plus_Jakarta_Sans'] ${isSpoiler() ? "text-orange-400" : "text-white"}`}>
                         {char.name}
@@ -80,9 +77,9 @@ export function CharacterCard(props: CharacterCardProps) {
                         <span class="text-slate-500 text-lg">{char.original}</span>
                     </Show>
                     <span class={`text-xs px-2.5 py-1 rounded-full font-bold tracking-wide border ${role() === "main" ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/30" :
-                            role() === "primary" ? "bg-purple-500/10 text-purple-400 border-purple-500/30" :
-                                role() === "side" ? "bg-sky-500/10 text-sky-400 border-sky-500/30" :
-                                    "bg-slate-500/10 text-slate-400 border-slate-500/30"
+                        role() === "primary" ? "bg-purple-500/10 text-purple-400 border-purple-500/30" :
+                            role() === "side" ? "bg-sky-500/10 text-sky-400 border-sky-500/30" :
+                                "bg-slate-500/10 text-slate-400 border-slate-500/30"
                         }`}>
                         {ROLE_NAMES[role()] || role()}
                     </span>
@@ -98,7 +95,6 @@ export function CharacterCard(props: CharacterCardProps) {
                     </Show>
                 </div>
 
-                {/* Details Table */}
                 <table class="w-full text-sm text-slate-300">
                     <tbody>
                         <Show when={char.aliases?.length}>

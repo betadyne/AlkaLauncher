@@ -43,13 +43,11 @@ export function TitleBar() {
 
     return (
         <div class="h-8 bg-[#0F172A] border-b border-slate-800/50 flex items-center select-none">
-            {/* Drag Region - only this area initiates drag */}
             <div
                 class="flex-1 h-full cursor-default"
                 onMouseDown={handleDragStart}
             ></div>
 
-            {/* Window Controls - Right Side (no drag here) */}
             <div
                 class="flex items-center h-full"
                 onMouseDown={preventDrag}

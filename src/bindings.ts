@@ -201,20 +201,8 @@ async setDiscordRpcButtons(vndbGame: boolean, vndbProfile: boolean, github: bool
 
 /** user-defined types **/
 
-export type AppError = { kind: "Io"; message: string } | { kind: "Json"; message: string } | { kind: "Http"; message: string } | { kind: "Database"; message: string } | { kind: "Bincode"; message: string } | { kind: "NotFound"; message: string } | { kind: "VndbApi"; message: string } | { kind: "AuthRequired"; message: string } | { kind: "ProcessLaunch"; message: string } | { kind: "Config"; message: string } | { kind: "Validation"; message: string }
-export type AppSettings = { vndb_token: string | null; vndb_user_id: string | null; blur_nsfw: boolean; discord_rpc_enabled?: boolean; 
-/**
- * Show "View on VNDB" button linking to game page
- */
-discord_btn_vndb_game?: boolean; 
-/**
- * Show "My VNDB Profile" button linking to user profile
- */
-discord_btn_vndb_profile?: boolean; 
-/**
- * Show "GitHub" button linking to repository
- */
-discord_btn_github?: boolean }
+export type AppError = { kind: "Io"; message: string } | { kind: "Json"; message: string } | { kind: "Http"; message: string } | { kind: "Database"; message: string } | { kind: "Bincode"; message: string } | { kind: "NotFound"; message: string } | { kind: "VndbApi"; message: string } | { kind: "AuthRequired"; message: string } | { kind: "ProcessLaunch"; message: string } | { kind: "Validation"; message: string }
+export type AppSettings = { vndb_token: string | null; vndb_user_id: string | null; blur_nsfw: boolean; discord_rpc_enabled?: boolean; discord_btn_vndb_game?: boolean; discord_btn_vndb_profile?: boolean; discord_btn_github?: boolean }
 export type DailyPlaytimeData = { games: Partial<{ [key in string]: Partial<{ [key in string]: number }> }> }
 export type GameMetadata = { id: string; title: string; path: string; vndb_id: string | null; cover_url: string | null; play_time: number; is_finished: boolean; last_played?: string | null; is_hidden?: boolean }
 export type VndbAuthInfo = { id: string; username: string }

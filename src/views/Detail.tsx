@@ -41,7 +41,6 @@ export function Detail(props: DetailProps) {
 
             {/* Main Content Area */}
             <div class="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-                {/* Background Pattern/Gradient */}
                 <div class="absolute top-0 right-0 w-[600px] h-[600px] bg-purple-900/10 blur-[120px] rounded-full pointer-events-none -translate-y-1/2 translate-x-1/3"></div>
 
                 {/* Loading Overlay */}
@@ -96,7 +95,6 @@ export function Detail(props: DetailProps) {
 
                 {/* Scrollable Content */}
                 <div class="flex-1 overflow-y-auto px-8 pb-8 custom-scrollbar z-10">
-                    {/* Game Info Tab */}
                     <Show when={props.page === "detail"}>
                         <GameInfoTab
                             game={props.game}
@@ -111,7 +109,6 @@ export function Detail(props: DetailProps) {
                         />
                     </Show>
 
-                    {/* Characters Tab */}
                     <Show when={props.page === "detail-chars"}>
                         <CharacterList
                             characters={props.characters}

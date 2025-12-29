@@ -1,5 +1,3 @@
-// App constants
-
 export const STATUS_LABELS = [
     { id: 1, name: "Playing" },
     { id: 2, name: "Finished" },
@@ -24,7 +22,6 @@ export const LENGTH_NAMES: Record<number, string> = {
     5: "Very Long (>50h)",
 };
 
-// Trait groups order for character display
 export const TRAIT_ORDER = [
     "Hair",
     "Eyes",

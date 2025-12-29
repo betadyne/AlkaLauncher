@@ -21,7 +21,6 @@ export function GameInfoTab(props: GameInfoTabProps) {
     const [showVoteDropdown, setShowVoteDropdown] = createSignal(false);
     const [errorMessage, setErrorMessage] = createSignal<string | null>(null);
 
-    // Auto-dismiss error after 4 seconds
     let errorTimeout: ReturnType<typeof setTimeout> | undefined;
     const showError = (message: string) => {
         clearTimeout(errorTimeout);
@@ -48,7 +47,6 @@ export function GameInfoTab(props: GameInfoTabProps) {
 
     return (
         <>
-            {/* Error Notification Toast */}
             <Show when={errorMessage()}>
                 <div class="fixed top-20 left-1/2 z-[100] animate-fade-in-down">
                     <div class="flex items-center gap-3 px-5 py-3.5 bg-gradient-to-r from-red-900/95 to-red-800/95 backdrop-blur-xl border border-red-500/30 rounded-2xl shadow-2xl shadow-red-900/40">
@@ -90,7 +88,6 @@ export function GameInfoTab(props: GameInfoTabProps) {
                 </Show>
 
                 <div class="flex gap-10">
-                    {/* Left Col: Cover */}
                     <div class="w-[300px] shrink-0">
                         <div class="aspect-[2/3] w-full rounded-[24px] overflow-hidden shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] bg-[#1E293B] border border-white/5 relative group">
                             <Show when={props.vnDetail.image?.url} fallback={
@@ -114,7 +111,6 @@ export function GameInfoTab(props: GameInfoTabProps) {
                         </div>
                     </div>
 
-                    {/* Right Col: Stats & Details */}
                     <div class="flex-1 space-y-8">
                         {/* Stats Grid */}
                         <div class="grid grid-cols-3 gap-4">

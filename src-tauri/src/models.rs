@@ -142,13 +142,10 @@ pub struct AppSettings {
     pub blur_nsfw: bool,
     #[serde(default = "default_discord_enabled")]
     pub discord_rpc_enabled: bool,
-    /// Show "View on VNDB" button linking to game page
     #[serde(default = "default_true")]
     pub discord_btn_vndb_game: bool,
-    /// Show "My VNDB Profile" button linking to user profile
     #[serde(default)]
     pub discord_btn_vndb_profile: bool,
-    /// Show "GitHub" button linking to repository
     #[serde(default)]
     pub discord_btn_github: bool,
 }

@@ -27,7 +27,6 @@ export function useUpdater() {
 
     const checkForUpdates = async (silent = false): Promise<boolean> => {
         try {
-            // Only show "checking" status for manual checks
             if (!silent) {
                 setStatus("checking");
             }
@@ -45,7 +44,6 @@ export function useUpdater() {
                 setStatus("available");
                 return true;
             } else {
-                // Only show "up-to-date" for manual checks
                 if (!silent) {
                     setStatus("up-to-date");
                 }
@@ -54,13 +52,11 @@ export function useUpdater() {
         } catch (e) {
             const errorMsg = e instanceof Error ? e.message : String(e);
 
-            // Only show error UI for manual checks
             if (!silent) {
                 setError(errorMsg);
                 setStatus("error");
                 console.error("Update check failed:", errorMsg);
             }
-            // Silent mode: just log quietly and keep status as idle
             return false;
         }
     };
@@ -75,7 +71,6 @@ export function useUpdater() {
             setStatus("downloading");
             setDownloadProgress(0);
 
-            // Download with progress tracking
             await pendingUpdate.downloadAndInstall((event) => {
                 switch (event.event) {
                     case "Started":
@@ -115,9 +110,7 @@ export function useUpdater() {
         pendingUpdate = null;
     };
 
-    // Auto-check on mount (silent)
     onMount(() => {
-        // Delay auto-check by 3 seconds to let the app fully load
         setTimeout(() => {
             checkForUpdates(true);
         }, 3000);

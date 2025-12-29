@@ -1,4 +1,3 @@
-/* Local Fonts - manually loaded from /fonts/ directory */
 @font-face {
   font-family: "Figtree";
   src: url("/fonts/Figtree/Figtree-VariableFont_wght.woff2") format("woff2");
@@ -51,7 +50,7 @@ body {
   min-height: 100vh;
 }
 
-/* Custom Scrollbar Styling */
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -74,13 +73,11 @@ body {
   background: transparent;
 }
 
-/* Firefox scrollbar */
 * {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }
 
-/* Checkbox styling */
 input[type="checkbox"] {
   appearance: none;
   -webkit-appearance: none;

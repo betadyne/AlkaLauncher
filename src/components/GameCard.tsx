@@ -20,7 +20,6 @@ interface GameCardProps {
   onSearch: (game: Game) => void;
   onClick: (game: Game) => void;
   onHide: (id: string, hidden: boolean) => void;
-  // Context menu coordination
   activeContextMenu: string | null;
   onContextMenuOpen: (gameId: string) => void;
 }
@@ -58,7 +57,6 @@ export function GameCard(props: GameCardProps) {
     }
   };
 
-  // Handle click outside to close menu
   createEffect(() => {
     if (showMenu()) {
       const handleOutsideClick = (e: MouseEvent) => {
@@ -67,7 +65,6 @@ export function GameCard(props: GameCardProps) {
         }
       };
 
-      // Use setTimeout to avoid immediate triggering
       setTimeout(() => {
         window.addEventListener("click", handleOutsideClick);
         window.addEventListener("contextmenu", handleOutsideClick);

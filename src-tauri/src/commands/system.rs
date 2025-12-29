@@ -88,14 +88,12 @@ pub fn launch_game(
                 })
             });
 
-            // Build buttons list based on settings (max 2)
             let vndb_game_url = game.vndb_id.as_ref().map(|id| format!("https://vndb.org/{}", id));
             let vndb_profile_url = settings.vndb_user_id.as_ref().map(|id| format!("https://vndb.org/{}", id));
             const GITHUB_URL: &str = "https://github.com/betadyne/AlkaLauncher";
 
             let mut buttons: Vec<(&str, String)> = Vec::new();
 
-            // Add buttons in priority order (View on VNDB > My Profile > GitHub)
             if settings.discord_btn_vndb_game {
                 if let Some(ref url) = vndb_game_url {
                     buttons.push(("View on VNDB", url.clone()));
@@ -110,7 +108,6 @@ pub fn launch_game(
                 buttons.push(("GitHub", GITHUB_URL.to_string()));
             }
 
-            // Convert to the format expected by set_activity
             let button_refs: Vec<(&str, &str)> = buttons
                 .iter()
                 .map(|(label, url)| (*label, url.as_str()))

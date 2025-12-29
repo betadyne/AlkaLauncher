@@ -11,7 +11,6 @@ interface CharacterListProps {
 }
 
 export function CharacterList(props: CharacterListProps) {
-    // Filter and group characters by role
     const groupedCharacters = () => {
         const vnId = props.vnId;
         const filtered = props.characters.filter(c => {
@@ -27,12 +26,10 @@ export function CharacterList(props: CharacterListProps) {
             groups[role].push(char);
         });
 
-        // Sort characters within each group alphabetically
         Object.values(groups).forEach(chars =>
             chars.sort((a, b) => a.name.localeCompare(b.name))
         );
 
-        // Return in role priority order
         return ["main", "primary", "side", "appears"]
             .filter(role => groups[role]?.length)
             .map(role => ({ role, chars: groups[role] }));

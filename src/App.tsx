@@ -111,7 +111,6 @@ function LibraryPage() {
         onSettings={() => setShowSettings(true)}
       />
 
-      {/* Settings Modal */}
       <Show when={showSettings()}>
         <SettingsModal
           tokenInput={tokenInput}
@@ -121,7 +120,6 @@ function LibraryPage() {
         />
       </Show>
 
-      {/* Search Modal */}
       <Show when={searchModal()}>
         <SearchModal
           searchQuery={searchQuery}
@@ -387,7 +385,6 @@ function SettingsModal(props: {
             </div>
             <p class="text-xs text-gray-500 mt-1">Show currently playing game in Discord activity status</p>
 
-            {/* Discord Buttons Settings */}
             <Show when={settings.settings().discord_rpc_enabled}>
               <div class="mt-3 pl-2 border-l-2 border-slate-600 space-y-2">
                 <p class="text-xs text-gray-400 mb-2">

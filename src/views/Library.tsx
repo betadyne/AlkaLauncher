@@ -52,7 +52,6 @@ export function Library(props: LibraryProps) {
     null,
   );
 
-  // Close dropdowns when clicking outside
   const handleClickOutside = (e: MouseEvent) => {
     const target = e.target as HTMLElement;
     if (!target.closest(".sort-dropdown")) {
@@ -112,7 +111,6 @@ export function Library(props: LibraryProps) {
 
       {/* Main Content */}
       <main class="flex-1 flex flex-col min-w-0 bg-gradient-to-br from-[#0F172A] to-[#1E293B]">
-        {/* Header */}
         <header class="h-20 px-8 flex items-center justify-between gap-8 border-b border-white/5">
           <h2 class="text-2xl font-bold text-white">Overview</h2>
 
@@ -128,7 +126,6 @@ export function Library(props: LibraryProps) {
             />
           </div>
 
-          {/* Right Actions */}
           <div class="flex items-center gap-4">
             {/* VNDB Username */}
             <Show when={props.authUser}>
@@ -175,7 +172,6 @@ export function Library(props: LibraryProps) {
         {/* Content Toolbar */}
         <div class="px-8 py-6 flex flex-col gap-6">
           <div class="flex items-center justify-between">
-            {/* Title with Count */}
             <div class="flex items-center gap-2">
               <span class="text-white font-medium">All Games</span>
               <span class="text-slate-500">({props.games.length})</span>
@@ -183,7 +179,6 @@ export function Library(props: LibraryProps) {
 
             {/* Sort & Filter */}
             <div class="flex items-center gap-4">
-              {/* Sort Dropdown */}
               <div class="sort-dropdown relative">
                 <button
                   onClick={(e) => {
@@ -210,8 +205,8 @@ export function Library(props: LibraryProps) {
                             setShowSortDropdown(false);
                           }}
                           class={`w-full flex items-center justify-between px-4 py-2.5 text-sm text-left hover:bg-[#334155] transition-colors ${props.sortBy === option.value
-                              ? "text-white"
-                              : "text-slate-400"
+                            ? "text-white"
+                            : "text-slate-400"
                             }`}
                         >
                           <span>{option.label}</span>
@@ -225,7 +220,6 @@ export function Library(props: LibraryProps) {
                 </Show>
               </div>
 
-              {/* Filters Dropdown */}
               <div class="filters-dropdown relative">
                 <button
                   onClick={(e) => {
@@ -234,8 +228,8 @@ export function Library(props: LibraryProps) {
                     setShowSortDropdown(false);
                   }}
                   class={`flex items-center gap-2 px-3 py-2 border rounded-xl text-sm transition-colors ${props.showHidden
-                      ? "bg-blue-500/20 border-blue-500/50 text-blue-300"
-                      : "bg-[#1E293B] border-slate-700/50 text-slate-400 hover:border-slate-600"
+                    ? "bg-blue-500/20 border-blue-500/50 text-blue-300"
+                    : "bg-[#1E293B] border-slate-700/50 text-slate-400 hover:border-slate-600"
                     }`}
                 >
                   <Filter class="w-4 h-4" />
@@ -271,8 +265,8 @@ export function Library(props: LibraryProps) {
                 <button
                   onClick={() => setViewMode("grid")}
                   class={`p-1.5 rounded transition-colors ${viewMode() === "grid"
-                      ? "text-white bg-slate-700/50"
-                      : "text-slate-500 hover:text-slate-300"
+                    ? "text-white bg-slate-700/50"
+                    : "text-slate-500 hover:text-slate-300"
                     }`}
                 >
                   <LayoutGrid class="w-4 h-4" />
@@ -280,8 +274,8 @@ export function Library(props: LibraryProps) {
                 <button
                   onClick={() => setViewMode("list")}
                   class={`p-1.5 rounded transition-colors ${viewMode() === "list"
-                      ? "text-white bg-slate-700/50"
-                      : "text-slate-500 hover:text-slate-300"
+                    ? "text-white bg-slate-700/50"
+                    : "text-slate-500 hover:text-slate-300"
                     }`}
                 >
                   <List class="w-4 h-4" />
@@ -357,7 +351,6 @@ export function Library(props: LibraryProps) {
                           </p>
                         </div>
 
-                        {/* Actions */}
                         <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <Show when={props.runningGame === game.id}>
                             <span class="px-2 py-1 bg-green-500 text-black text-xs font-bold rounded animate-pulse">
@@ -411,6 +404,3 @@ export function Library(props: LibraryProps) {
     </div>
   );
 }
-
-// Add these styles to global CSS (already using Tailwind)
-// .custom-scrollbar implementation is in index.css
