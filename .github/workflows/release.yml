@@ -37,12 +37,23 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: 'AlkaLauncher ${{ github.ref_name }}'
           releaseBody: |
-            ## Downloads
-            - **Installer** (`.exe`): Recommended for most users
-            - **Portable** (`.zip`): No installation required
+            # Changelog
             
-            ## Auto-Update
-            This version supports auto-update. You will be notified when a new version is available.
+            ## v1.1.0 (2025-12-29)
+
+            ### New Features
+
+            - Discord Rich Presence support
+            - Display game developer name on Game Info page
+            - Error notification when trying to vote/set status without VNDB connection
+
+            ### New Settings
+
+            Discord Rich Presence button options in Settings (max 2 active):
+            - View on VNDB
+            - My VNDB Profile (requires VNDB token)
+            - GitHub Repository
+            
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: true
