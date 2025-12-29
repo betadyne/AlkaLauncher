@@ -62,9 +62,22 @@ jobs:
         shell: pwsh
         run: |
           $version = "${{ github.ref_name }}".TrimStart('v')
-          $exePath = "src-tauri/target/release/AlkaLauncher.exe"
           $zipName = "AlkaLauncher_${version}_x64-portable.zip"
-          Compress-Archive -Path $exePath -DestinationPath $zipName
+          
+          # Find the exe in the release bundle directory
+          $exePath = Get-ChildItem -Path "src-tauri/target/release" -Filter "*.exe" -Recurse | 
+                     Where-Object { $_.Name -eq "AlkaLauncher.exe" } | 
+                     Select-Object -First 1 -ExpandProperty FullName
+          
+          if ($exePath) {
+            Write-Host "Found exe at: $exePath"
+            Compress-Archive -Path $exePath -DestinationPath $zipName
+            Write-Host "Created portable zip: $zipName"
+          } else {
+            Write-Host "ERROR: Could not find AlkaLauncher.exe"
+            Get-ChildItem -Path "src-tauri/target/release" -Recurse | ForEach-Object { Write-Host $_.FullName }
+            exit 1
+          }
 
       - name: Upload portable zip to release
         uses: softprops/action-gh-release@v1
