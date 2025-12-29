@@ -60,8 +60,8 @@ export function Detail(props: DetailProps) {
                         <button
                             onClick={() => props.setPage("detail")}
                             class={`px-6 py-2 rounded-full text-sm font-bold transition-all ${props.page === "detail"
-                                    ? "bg-[#38BDF8] text-[#0F172A] shadow-lg shadow-sky-500/20"
-                                    : "text-slate-400 hover:text-slate-200"
+                                ? "bg-[#38BDF8] text-[#0F172A] shadow-lg shadow-sky-500/20"
+                                : "text-slate-400 hover:text-slate-200"
                                 }`}
                         >
                             Game Info
@@ -69,8 +69,8 @@ export function Detail(props: DetailProps) {
                         <button
                             onClick={() => props.setPage("detail-chars")}
                             class={`px-6 py-2 rounded-full text-sm font-bold transition-all ${props.page === "detail-chars"
-                                    ? "bg-[#38BDF8] text-[#0F172A] shadow-lg shadow-sky-500/20"
-                                    : "text-slate-400 hover:text-slate-200"
+                                ? "bg-[#38BDF8] text-[#0F172A] shadow-lg shadow-sky-500/20"
+                                : "text-slate-400 hover:text-slate-200"
                                 }`}
                         >
                             Characters
@@ -102,6 +102,7 @@ export function Detail(props: DetailProps) {
                             game={props.game}
                             vnDetail={props.vnDetail}
                             userVn={props.userVn}
+                            isVndbConnected={!!props.settings.vndb_token}
                             shouldBlur={props.shouldBlur}
                             formatPlayTime={props.formatPlayTime}
                             formatLastPlayed={props.formatLastPlayed}
