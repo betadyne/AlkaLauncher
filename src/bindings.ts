@@ -12,7 +12,7 @@ async initApp() : Promise<void> {
 async getAllGames() : Promise<GameMetadata[]> {
     return await TAURI_INVOKE("get_all_games");
 },
-async addLocalGame(path: string) : Promise<Result<GameMetadata, string>> {
+async addLocalGame(path: string) : Promise<Result<GameMetadata, AppError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("add_local_game", { path }) };
 } catch (e) {
@@ -20,7 +20,7 @@ async addLocalGame(path: string) : Promise<Result<GameMetadata, string>> {
     else return { status: "error", error: e  as any };
 }
 },
-async removeGame(id: string) : Promise<Result<null, string>> {
+async removeGame(id: string) : Promise<Result<null, AppError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("remove_game", { id }) };
 } catch (e) {
@@ -28,7 +28,7 @@ async removeGame(id: string) : Promise<Result<null, string>> {
     else return { status: "error", error: e  as any };
 }
 },
-async updateGame(game: GameMetadata) : Promise<Result<null, string>> {
+async updateGame(game: GameMetadata) : Promise<Result<null, AppError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("update_game", { game }) };
 } catch (e) {
@@ -36,7 +36,7 @@ async updateGame(game: GameMetadata) : Promise<Result<null, string>> {
     else return { status: "error", error: e  as any };
 }
 },
-async searchVndb(query: string) : Promise<Result<VndbSearchResult[], string>> {
+async searchVndb(query: string) : Promise<Result<VndbSearchResult[], AppError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("search_vndb", { query }) };
 } catch (e) {
@@ -44,7 +44,7 @@ async searchVndb(query: string) : Promise<Result<VndbSearchResult[], string>> {
     else return { status: "error", error: e  as any };
 }
 },
-async fetchVndbDetail(vndbId: string, forceRefresh: boolean | null) : Promise<Result<VndbVnDetail, string>> {
+async fetchVndbDetail(vndbId: string, forceRefresh: boolean | null) : Promise<Result<VndbVnDetail, AppError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("fetch_vndb_detail", { vndbId, forceRefresh }) };
 } catch (e) {
@@ -52,7 +52,7 @@ async fetchVndbDetail(vndbId: string, forceRefresh: boolean | null) : Promise<Re
     else return { status: "error", error: e  as any };
 }
 },
-async fetchVndbCharacters(vndbId: string, forceRefresh: boolean | null) : Promise<Result<VndbCharacter[], string>> {
+async fetchVndbCharacters(vndbId: string, forceRefresh: boolean | null) : Promise<Result<VndbCharacter[], AppError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("fetch_vndb_characters", { vndbId, forceRefresh }) };
 } catch (e) {
@@ -60,7 +60,7 @@ async fetchVndbCharacters(vndbId: string, forceRefresh: boolean | null) : Promis
     else return { status: "error", error: e  as any };
 }
 },
-async clearVndbCache(vndbId: string) : Promise<Result<null, string>> {
+async clearVndbCache(vndbId: string) : Promise<Result<null, AppError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("clear_vndb_cache", { vndbId }) };
 } catch (e) {
@@ -68,7 +68,7 @@ async clearVndbCache(vndbId: string) : Promise<Result<null, string>> {
     else return { status: "error", error: e  as any };
 }
 },
-async clearAllCache() : Promise<Result<null, string>> {
+async clearAllCache() : Promise<Result<null, AppError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("clear_all_cache") };
 } catch (e) {
@@ -79,7 +79,7 @@ async clearAllCache() : Promise<Result<null, string>> {
 async getSettings() : Promise<AppSettings> {
     return await TAURI_INVOKE("get_settings");
 },
-async saveVndbToken(token: string) : Promise<Result<null, string>> {
+async saveVndbToken(token: string) : Promise<Result<null, AppError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("save_vndb_token", { token }) };
 } catch (e) {
@@ -87,7 +87,7 @@ async saveVndbToken(token: string) : Promise<Result<null, string>> {
     else return { status: "error", error: e  as any };
 }
 },
-async clearVndbToken() : Promise<Result<null, string>> {
+async clearVndbToken() : Promise<Result<null, AppError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("clear_vndb_token") };
 } catch (e) {
@@ -95,7 +95,7 @@ async clearVndbToken() : Promise<Result<null, string>> {
     else return { status: "error", error: e  as any };
 }
 },
-async setBlurNsfw(blur: boolean) : Promise<Result<null, string>> {
+async setBlurNsfw(blur: boolean) : Promise<Result<null, AppError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("set_blur_nsfw", { blur }) };
 } catch (e) {
@@ -103,7 +103,7 @@ async setBlurNsfw(blur: boolean) : Promise<Result<null, string>> {
     else return { status: "error", error: e  as any };
 }
 },
-async vndbAuthCheck() : Promise<Result<VndbAuthInfo, string>> {
+async vndbAuthCheck() : Promise<Result<VndbAuthInfo, AppError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("vndb_auth_check") };
 } catch (e) {
@@ -111,7 +111,7 @@ async vndbAuthCheck() : Promise<Result<VndbAuthInfo, string>> {
     else return { status: "error", error: e  as any };
 }
 },
-async vndbGetUserVn(vndbId: string) : Promise<Result<VndbUserListItem | null, string>> {
+async vndbGetUserVn(vndbId: string) : Promise<Result<VndbUserListItem | null, AppError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("vndb_get_user_vn", { vndbId }) };
 } catch (e) {
@@ -119,7 +119,7 @@ async vndbGetUserVn(vndbId: string) : Promise<Result<VndbUserListItem | null, st
     else return { status: "error", error: e  as any };
 }
 },
-async vndbSetStatus(vndbId: string, labelId: number) : Promise<Result<null, string>> {
+async vndbSetStatus(vndbId: string, labelId: number) : Promise<Result<null, AppError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("vndb_set_status", { vndbId, labelId }) };
 } catch (e) {
@@ -127,7 +127,7 @@ async vndbSetStatus(vndbId: string, labelId: number) : Promise<Result<null, stri
     else return { status: "error", error: e  as any };
 }
 },
-async vndbSetVote(vndbId: string, vote: number) : Promise<Result<null, string>> {
+async vndbSetVote(vndbId: string, vote: number) : Promise<Result<null, AppError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("vndb_set_vote", { vndbId, vote }) };
 } catch (e) {
@@ -135,7 +135,7 @@ async vndbSetVote(vndbId: string, vote: number) : Promise<Result<null, string>> 
     else return { status: "error", error: e  as any };
 }
 },
-async vndbRemoveVote(vndbId: string) : Promise<Result<null, string>> {
+async vndbRemoveVote(vndbId: string) : Promise<Result<null, AppError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("vndb_remove_vote", { vndbId }) };
 } catch (e) {
@@ -143,7 +143,7 @@ async vndbRemoveVote(vndbId: string) : Promise<Result<null, string>> {
     else return { status: "error", error: e  as any };
 }
 },
-async launchGame(id: string) : Promise<Result<null, string>> {
+async launchGame(id: string) : Promise<Result<null, AppError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("launch_game", { id }) };
 } catch (e) {
@@ -151,7 +151,7 @@ async launchGame(id: string) : Promise<Result<null, string>> {
     else return { status: "error", error: e  as any };
 }
 },
-async stopTracking() : Promise<Result<number, string>> {
+async stopTracking() : Promise<Result<number, AppError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("stop_tracking") };
 } catch (e) {
@@ -165,9 +165,25 @@ async pollRunningGame() : Promise<string | null> {
 async getElapsedTime() : Promise<number> {
     return await TAURI_INVOKE("get_elapsed_time");
 },
-async setGameHidden(id: string, hidden: boolean) : Promise<Result<null, string>> {
+async setGameHidden(id: string, hidden: boolean) : Promise<Result<null, AppError>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("set_game_hidden", { id, hidden }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async setDiscordRpcEnabled(enabled: boolean) : Promise<Result<null, AppError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("set_discord_rpc_enabled", { enabled }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async setDiscordRpcButtons(vndbGame: boolean, vndbProfile: boolean, github: boolean) : Promise<Result<null, AppError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("set_discord_rpc_buttons", { vndbGame, vndbProfile, github }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -185,7 +201,20 @@ async setGameHidden(id: string, hidden: boolean) : Promise<Result<null, string>>
 
 /** user-defined types **/
 
-export type AppSettings = { vndb_token: string | null; vndb_user_id: string | null; blur_nsfw: boolean }
+export type AppError = { kind: "Io"; message: string } | { kind: "Json"; message: string } | { kind: "Http"; message: string } | { kind: "Database"; message: string } | { kind: "Bincode"; message: string } | { kind: "NotFound"; message: string } | { kind: "VndbApi"; message: string } | { kind: "AuthRequired"; message: string } | { kind: "ProcessLaunch"; message: string } | { kind: "Config"; message: string } | { kind: "Validation"; message: string }
+export type AppSettings = { vndb_token: string | null; vndb_user_id: string | null; blur_nsfw: boolean; discord_rpc_enabled?: boolean; 
+/**
+ * Show "View on VNDB" button linking to game page
+ */
+discord_btn_vndb_game?: boolean; 
+/**
+ * Show "My VNDB Profile" button linking to user profile
+ */
+discord_btn_vndb_profile?: boolean; 
+/**
+ * Show "GitHub" button linking to repository
+ */
+discord_btn_github?: boolean }
 export type DailyPlaytimeData = { games: Partial<{ [key in string]: Partial<{ [key in string]: number }> }> }
 export type GameMetadata = { id: string; title: string; path: string; vndb_id: string | null; cover_url: string | null; play_time: number; is_finished: boolean; last_played?: string | null; is_hidden?: boolean }
 export type VndbAuthInfo = { id: string; username: string }
@@ -193,11 +222,12 @@ export type VndbCharacter = { id: string; name: string; original: string | null;
 export type VndbCharacterVn = { id: string; role: string; spoiler?: number }
 export type VndbImage = { url: string; sexual?: number; violence?: number }
 export type VndbLabel = { id: number; label: string }
+export type VndbProducer = { id: string; name: string }
 export type VndbSearchResult = { id: string; title: string; image: VndbImage | null; released: string | null; rating: number | null }
 export type VndbTag = { id: string; name: string; rating: number; spoiler?: number }
 export type VndbTrait = { id: string; name: string; group_id: string | null; group_name: string | null; spoiler?: number }
 export type VndbUserListItem = { id: string; vote: number | null; labels: VndbLabel[] | null; started: string | null; finished: string | null }
-export type VndbVnDetail = { id: string; title: string; image: VndbImage | null; released: string | null; rating: number | null; description: string | null; length: number | null; length_minutes: number | null; tags: VndbTag[] | null }
+export type VndbVnDetail = { id: string; title: string; image: VndbImage | null; released: string | null; rating: number | null; description: string | null; length: number | null; length_minutes: number | null; tags: VndbTag[] | null; developers: VndbProducer[] | null }
 
 /** tauri-specta globals **/
 
