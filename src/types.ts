@@ -16,5 +16,9 @@ export type {
     VndbAuthInfo,
     AppSettings,
     DailyPlaytimeData,
-    GameExitedPayload,
 } from "./bindings";
+
+export interface GameExitedPayload {
+    game_id: string;
+    play_minutes: number;
+}

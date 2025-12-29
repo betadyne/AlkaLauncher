@@ -101,13 +101,11 @@ pub fn run() {
         .manage(state)
         .setup(move |app| {
             builder.mount_events(app);
-            if cfg!(debug_assertions) {
-                app.handle().plugin(
-                    tauri_plugin_log::Builder::default()
-                        .level(log::LevelFilter::Info)
-                        .build(),
-                )?;
-            }
+            app.handle().plugin(
+                tauri_plugin_log::Builder::default()
+                    .level(log::LevelFilter::Info)
+                    .build(),
+            )?;
             Ok(())
         })
         .run(tauri::generate_context!())

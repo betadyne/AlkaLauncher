@@ -1,6 +1,7 @@
 import { createContext, createSignal, useContext, onCleanup, ParentComponent } from "solid-js";
 import { listen } from "@tauri-apps/api/event";
-import type { GameMetadata, GameExitedPayload } from "../bindings";
+import type { GameMetadata } from "../bindings";
+import type { GameExitedPayload } from "../types";
 import * as api from "../api";
 
 interface GameContextValue {
@@ -25,9 +26,11 @@ export const GameProvider: ParentComponent = (props) => {
 
     const loadGames = async () => {
         setLoading(true);
-        const result = await api.getAllGames();
-        if (result.status === "ok") {
-            setGames(result.data);
+        try {
+            const games = await api.getAllGames();
+            setGames(games);
+        } catch (e) {
+            console.error("Failed to load games:", e);
         }
         setLoading(false);
     };

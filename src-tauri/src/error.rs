@@ -31,9 +31,6 @@ pub enum AppError {
     #[error("Process launch failed: {0}")]
     ProcessLaunch(String),
 
-    #[error("Configuration error: {0}")]
-    Config(String),
-
     #[error("Validation error: {0}")]
     Validation(String),
 }

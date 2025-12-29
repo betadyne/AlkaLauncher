@@ -50,25 +50,48 @@ fn atomic_write(path: &Path, content: &str) -> AppResult<()> {
 
 pub fn save_games(games: &[GameMetadata]) -> AppResult<()> {
     let path = get_data_path();
+    log::info!("save_games: Saving {} games to {:?}", games.len(), path);
+
+    if games.is_empty() && path.exists() {
+        if let Ok(content) = fs::read_to_string(&path) {
+            if let Ok(existing) = serde_json::from_str::<Vec<GameMetadata>>(&content) {
+                if !existing.is_empty() {
+                    log::warn!(
+                        "save_games: Refusing to overwrite {} existing games with empty list",
+                        existing.len()
+                    );
+                    return Ok(());
+                }
+            }
+        }
+    }
+
     let json = serde_json::to_string_pretty(games)?;
     atomic_write(&path, &json)
 }
 
 pub fn load_games() -> AppResult<Vec<GameMetadata>> {
     let path = get_data_path();
+    log::info!("load_games: Loading from {:?}", path);
+
     if !path.exists() {
+        log::info!("load_games: File does not exist, returning empty list");
         return Ok(Vec::new());
     }
 
     let content = fs::read_to_string(&path)?;
 
     match serde_json::from_str::<Vec<GameMetadata>>(&content) {
-        Ok(games) => Ok(games),
+        Ok(games) => {
+            log::info!("load_games: Successfully loaded {} games", games.len());
+            Ok(games)
+        }
         Err(e) => {
+            log::error!("load_games: Failed to parse JSON: {}", e);
             let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
             let backup_path = get_data_dir().join(format!("games.json.corrupted.{}", timestamp));
             if let Err(backup_err) = fs::copy(&path, &backup_path) {
-                eprintln!("Failed to backup corrupted games.json: {}", backup_err);
+                log::error!("Failed to backup corrupted games.json: {}", backup_err);
             }
             Err(AppError::Json(e.to_string()))
         }
